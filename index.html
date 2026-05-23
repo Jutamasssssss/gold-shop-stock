@@ -1,0 +1,3613 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบสต็อกทอง — ห้างทองร่ำรวยดี</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --gold: #B98A14;
+    --gold-light: #F3D982;
+    --gold-dark: #7A5510;
+    --bg: #F7F5EF;
+    --surface: #FFFFFF;
+    --surface2: #F0EEE7;
+    --border: rgba(58,45,24,0.10);
+    --border2: rgba(58,45,24,0.18);
+    --text: #1A1A18;
+    --text2: #5A5A54;
+    --text3: #9A9A90;
+    --green: #2D7D46;
+    --green-bg: #EAF5EE;
+    --red: #B83232;
+    --red-bg: #FDEDED;
+    --blue: #1A5FA8;
+    --blue-bg: #EAF1FB;
+    --amber: #8B5E0A;
+    --amber-bg: #FEF3DC;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
+  
+  /* Layout */
+  .app { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+  .sidebar { background: linear-gradient(180deg,#15130F 0%,#1C1811 62%,#211A10 100%); color: #fff; padding: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid rgba(255,255,255,0.06); }
+  .sidebar-logo { padding: 24px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .sidebar-logo h1 { font-size: 16px; font-weight: 700; color: var(--gold-light); letter-spacing: 0.01em; }
+  .sidebar-logo p { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .sidebar-spot { padding: 12px 20px; background: rgba(184,134,11,0.15); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .sidebar-spot label { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .sidebar-spot input { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 500; width: 100%; padding: 6px 8px; border-radius: 6px; }
+  .sidebar-spot input:focus { outline: none; border-color: var(--gold-light); }
+  nav { flex: 1; padding: 8px 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 20px; cursor: pointer; font-size: 14px; color: rgba(255,255,255,0.68); transition: all 0.15s; border-left: 3px solid transparent; }
+  .nav-item:hover { color: #fff; background: rgba(255,255,255,0.07); }
+  .nav-item.active { color: var(--gold-light); background: linear-gradient(90deg,rgba(185,138,20,0.24),rgba(185,138,20,0.08)); border-left-color: var(--gold); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .main { overflow-y: auto; background: radial-gradient(circle at top right,rgba(185,138,20,0.08),transparent 280px), var(--bg); }
+  .page { display: none; padding: 32px 36px; max-width: 1500px; }
+  .page.active { display: block; }
+
+  /* Header */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .page-title { font-size: 22px; font-weight: 600; color: var(--text); }
+  .page-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-family: 'Sarabun', sans-serif; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: var(--gold); color: #fff; }
+  .btn-primary:hover { background: var(--gold-dark); }
+  .btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--border); }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(184,50,50,0.2); }
+  .btn-danger:hover { background: #fce0e0; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; box-shadow: 0 8px 24px rgba(35,28,16,0.04); }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .metric { background: rgba(255,255,255,0.72); border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: 0 8px 20px rgba(35,28,16,0.035); }
+  .metric-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .metric-value { font-size: 22px; font-weight: 600; color: var(--text); font-family: 'IBM Plex Mono', monospace; }
+  .metric-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .metric.gold { background: var(--amber-bg); }
+  .metric.gold .metric-value { color: var(--amber); }
+  .metric.green { background: var(--green-bg); }
+  .metric.green .metric-value { color: var(--green); }
+
+  /* Table */
+  .tbl-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 8px 24px rgba(35,28,16,0.04); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: var(--surface2); padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  .mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .num { text-align: right; font-family: 'IBM Plex Mono', monospace; }
+  .text-green { color: var(--green); }
+  .text-red { color: var(--red); }
+  .text-muted { color: var(--text3); }
+
+  /* Badges */
+  .badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; letter-spacing: 0.04em; }
+  .badge-sc { background: var(--amber-bg); color: var(--amber); }
+  .badge-rg { background: var(--blue-bg); color: var(--blue); }
+  .badge-sk { background: var(--green-bg); color: var(--green); }
+  .badge-ea { background: #F5EEF8; color: #7D3C98; }
+  .badge-pd { background: #EAF5FB; color: #1A7FAA; }
+  .badge-gb { background: #F9EBEA; color: #922B21; }
+  .badge-other { background: var(--surface2); color: var(--text2); }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 16px; padding: 28px; width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+  .modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: var(--text); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1/-1; }
+  label { font-size: 12px; font-weight: 500; color: var(--text2); }
+  input, select, textarea { font-family: 'Sarabun', sans-serif; font-size: 14px; padding: 8px 10px; border: 1px solid var(--border2); border-radius: 8px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,134,11,0.12); }
+  .price-preview { background: var(--amber-bg); border-radius: 8px; padding: 12px; font-size: 13px; margin-top: 8px; }
+  .price-preview .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .price-preview .total { font-weight: 600; font-size: 15px; border-top: 1px solid rgba(139,94,10,0.2); padding-top: 6px; margin-top: 6px; color: var(--amber); }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+  /* Sale modal */
+  .item-search { position: relative; margin-bottom: 16px; }
+  .item-search input { width: 100%; font-size: 15px; padding: 10px 14px; }
+  .search-results { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 10; max-height: 260px; overflow-y: auto; display: none; }
+  .search-results.open { display: block; }
+  .search-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); }
+  .search-item:last-child { border-bottom: none; }
+  .search-item:hover { background: var(--surface2); }
+  .search-item-name { font-weight: 500; font-size: 14px; }
+  .search-item-meta { font-size: 12px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; }
+
+  /* Tray layout */
+  .tray-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .tray-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.15s; }
+  .tray-card:hover { border-color: var(--gold); box-shadow: 0 4px 16px rgba(184,134,11,0.12); }
+  .tray-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .tray-name { font-size: 13px; font-weight: 600; }
+  .tray-count { font-size: 22px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; color: var(--gold); margin: 6px 0 2px; }
+  .tray-value { font-size: 11px; color: var(--text3); }
+  .tray-bar { height: 3px; background: var(--border); border-radius: 99px; margin-top: 10px; overflow: hidden; }
+  .tray-bar-fill { height: 100%; background: var(--gold); border-radius: 99px; transition: width 0.3s; }
+
+  /* History */
+  .tx-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .tx-icon.sale { background: var(--green-bg); }
+  .tx-icon.buy { background: var(--blue-bg); }
+  .tx-meta { flex: 1; }
+  .tx-name { font-size: 14px; font-weight: 500; }
+  .tx-date { font-size: 12px; color: var(--text3); }
+  .tx-amount { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 500; }
+  .tx-amount.sale { color: var(--green); }
+  .tx-amount.buy { color: var(--red); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--surface2); padding: 4px; border-radius: 10px; width: fit-content; }
+  .tab { padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text2); transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+  /* FIFO badge */
+  .fifo-info { font-size: 11px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; }
+  
+  /* Empty state */
+  .empty { text-align: center; padding: 48px; color: var(--text3); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; margin-top: 24px; }
+  .section-title:first-child { margin-top: 0; }
+
+  .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+  .alert-info { background: var(--blue-bg); color: var(--blue); }
+
+  .chip { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 500; }
+  .chip-green { background: var(--green-bg); color: var(--green); }
+  .chip-red { background: var(--red-bg); color: var(--red); }
+
+  /* Barcode label card */
+  .bc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align:center; }
+  .bc-card .bc-name { font-size:12px; font-weight:600; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bc-card .bc-code { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3); margin-bottom:8px; }
+  .bc-bars { display:flex; justify-content:center; gap:1px; height:36px; margin-bottom:6px; }
+  .bc-bars span { display:inline-block; background:var(--text); width:2px; }
+  .bc-bars span.wide { width:4px; }
+  .bc-bars span.gap { background:transparent; }
+  .bc-price { font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; color:var(--amber); }
+  .bc-weight { font-size:11px; color:var(--text3); }
+
+  /* Login overlay */
+  .login-overlay { display:none; position:fixed; inset:0; background:rgba(26,26,24,0.96); z-index:200; align-items:center; justify-content:center; flex-direction:column; }
+  .login-overlay.open { display:flex; }
+  .login-box { background:var(--surface); border-radius:20px; padding:40px; width:360px; max-width:95vw; text-align:center; }
+  .login-box h2 { font-size:22px; font-weight:700; color:var(--gold); margin-bottom:4px; }
+  .login-box p { font-size:13px; color:var(--text3); margin-bottom:24px; }
+  .login-box .form-group { text-align:left; margin-bottom:12px; }
+  .user-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,0.08); border-radius:8px; padding:5px 12px; font-size:13px; color:#fff; cursor:pointer; border:none; }
+  .user-badge:hover { background:rgba(255,255,255,0.14); }
+  .role-badge { font-size:10px; padding:1px 6px; border-radius:99px; background:rgba(184,134,11,0.3); color:var(--gold-light); }
+
+  /* Receipt print */
+  .receipt { width:300px; margin:0 auto; font-family:'Sarabun',sans-serif; font-size:13px; line-height:1.6; }
+  .receipt h2 { font-size:16px; font-weight:700; text-align:center; margin-bottom:2px; }
+  .receipt .sub { text-align:center; color:var(--text2); font-size:11px; margin-bottom:12px; }
+  .receipt .r-row { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px dashed var(--border); font-size:13px; }
+  .receipt .r-total { display:flex; justify-content:space-between; padding:8px 0; font-weight:700; font-size:16px; margin-top:4px; }
+  .receipt .thank { text-align:center; margin-top:12px; font-size:12px; color:var(--text3); }
+
+  /* Spot refresh */
+  .spot-refresh { background:none; border:none; color:rgba(255,255,255,0.5); cursor:pointer; font-size:13px; padding:2px 4px; margin-left:4px; }
+  .spot-refresh:hover { color:#fff; }
+
+  /* Pawn statuses */
+  .pawn-status { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:99px; }
+  .pawn-active { background:#EAF1FB; color:#1A5FA8; }
+  .pawn-due { background:#FEF3DC; color:#8B5E0A; }
+  .pawn-overdue { background:#FDEDED; color:#B83232; }
+  .pawn-closed { background:var(--surface2); color:var(--text3); }
+
+  /* Savings */
+  .savings-bar { height:6px; background:var(--border); border-radius:99px; overflow:hidden; margin-top:4px; }
+  .savings-fill { height:100%; background:var(--gold); border-radius:99px; }
+
+  /* CRM */
+  .crm-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; cursor:pointer; transition:border-color 0.15s; }
+  .crm-card:hover { border-color:var(--gold); }
+  .crm-name { font-size:14px; font-weight:600; }
+  .crm-meta { font-size:12px; color:var(--text3); margin-top:2px; }
+  .crm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+  .ops-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:20px; }
+  .ops-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; box-shadow:0 8px 24px rgba(35,28,16,0.04); }
+  .ops-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+  .ops-meta { font-size:12px; color:var(--text3); line-height:1.45; }
+
+  @media print {
+    .login-overlay, .sidebar, .page-header button, .tabs, .alert, .btn { display:none !important; }
+    .app { grid-template-columns: 1fr; }
+    #barcodeList { grid-template-columns: repeat(4,1fr) !important; gap:8px !important; }
+    .bc-card { border:1px solid #ccc; page-break-inside:avoid; }
+    .receipt { width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Login Overlay -->
+<div class="login-overlay open" id="loginOverlay">
+  <div class="login-box">
+    <h2 class="shop-name">◈ ห้างทองร่ำรวยดี</h2>
+    <p>ระบบจัดการสต็อก — กรุณาเข้าสู่ระบบ</p>
+    <div class="form-group">
+      <label>ชื่อผู้ใช้</label>
+      <input type="text" id="loginUser" placeholder="เช่น admin" value="admin">
+    </div>
+    <div class="form-group">
+      <label>รหัสผ่าน</label>
+      <input type="password" id="loginPass" placeholder="รหัสผ่าน" value="1234" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="loginErr" style="color:var(--red);font-size:13px;margin-bottom:10px;display:none;">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div style="margin-top:16px;font-size:11px;color:var(--text3);">Demo: admin/1234 · cashier/1234 · viewer/1234</div>
+  </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal-overlay" id="receiptModal">
+  <div class="modal" style="max-width:380px;">
+    <h2>ใบเสร็จ / ใบกำกับภาษี</h2>
+    <div id="receiptContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('receiptModal')">ปิด</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨 พิมพ์</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pawn Modal (new/renew) -->
+<div class="modal-overlay" id="pawnModal">
+  <div class="modal">
+    <h2 id="pawnModalTitle">รับจำนำ / ขายฝาก</h2>
+    <input type="hidden" id="pawnEditTicket">
+    <div class="form-grid">
+      <div class="form-group full"><label>รายการสินค้า</label><input type="text" id="pawnItem" placeholder="เช่น สร้อยคอ ลายโซ่ 2 บาท"></div>
+      <div class="form-group"><label>น้ำหนัก</label>
+        <select id="pawnWeight">
+          <optgroup label="กรัม"><option value="g0.5">0.5g</option><option value="g1">1g</option></optgroup>
+          <optgroup label="สลึง"><option value="0.5">ครึ่งสลึง</option><option value="1">1 สลึง</option><option value="2">2 สลึง</option></optgroup>
+          <optgroup label="บาท"><option value="4" selected>1 บาท</option><option value="8">2 บาท</option><option value="12">3 บาท</option><option value="16">4 บาท</option><option value="20">5 บาท</option></optgroup>
+        </select>
+      </div>
+      <div class="form-group"><label>ยอดจำนำ (บาท)</label><input type="number" id="pawnAmount" placeholder="ยอดที่ลูกค้าได้รับ" oninput="calcPawnInterest()"></div>
+      <div class="form-group"><label>ดอกเบี้ย %/เดือน</label><input type="number" id="pawnRate" value="1.5" step="0.5" oninput="calcPawnInterest()"></div>
+      <div class="form-group"><label>จำนวนเดือน</label><input type="number" id="pawnMonths" value="3" min="1" oninput="calcPawnInterest()"></div>
+      <div class="form-group"><label>ชื่อลูกค้า</label><input type="text" id="pawnCustomer" placeholder="ชื่อ-นามสกุล"></div>
+      <div class="form-group"><label>เบอร์โทรลูกค้า *</label><input type="tel" id="pawnPhone" placeholder="08x-xxx-xxxx" inputmode="numeric"></div>
+      <div class="form-group full"><label>เลขบัตรประชาชน *</label><input type="text" id="pawnID" placeholder="x-xxxx-xxxxx-xx-x" maxlength="17"></div>
+    </div>
+    <div class="price-preview" id="pawnPreview" style="margin-top:12px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('pawnModal')">ยกเลิก</button>
+      <button class="btn btn-primary" id="pawnSaveBtn" onclick="confirmPawn()">บันทึกจำนำ</button>
+    </div>
+  </div>
+</div>
+
+<!-- CRM Detail Modal -->
+<div class="modal-overlay" id="crmModal">
+  <div class="modal">
+    <h2>ข้อมูลลูกค้า</h2>
+    <div id="crmModalContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('crmModal')">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1 class="shop-name">◈ ห้างทองร่ำรวยดี</h1>
+      <p>ระบบจัดการสต็อก</p>
+      <div style="margin-top:10px;">
+        <button class="user-badge" onclick="showLogout()">
+          <span id="sidebarUserIcon">👤</span>
+          <span id="sidebarUserName">กำลังโหลด...</span>
+          <span class="role-badge" id="sidebarRoleBadge"></span>
+        </button>
+      </div>
+    </div>
+    <div class="sidebar-spot">
+      <label>SPOT วันนี้ (บาท/บาท) <button class="spot-refresh" onclick="fetchSpot()" title="ดึงราคาล่าสุด">↻</button></label>
+      <input type="number" id="spotInput" value="72230" onchange="updateSpot()">
+      <div id="spotStatus" style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:3px;">ป้อนเองหรือกด ↻ ดึงราคา</div>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <span class="nav-icon">◉</span> ภาพรวม
+      </div>
+      <div class="nav-item" onclick="showPage('stock')">
+        <span class="nav-icon">▦</span> สต็อกสินค้า
+      </div>
+      <div class="nav-item" onclick="showPage('trays')">
+        <span class="nav-icon">⊞</span> แผนถาด
+      </div>
+      <div class="nav-item" onclick="showPage('sell')">
+        <span class="nav-icon">⊕</span> บันทึกขาย
+      </div>
+      <div class="nav-item" onclick="showPage('pawn')">
+        <span class="nav-icon">◈</span> จำนำ / ขายฝาก
+      </div>
+      <div class="nav-item" onclick="showPage('savings')">
+        <span class="nav-icon">◎</span> ออมทอง
+      </div>
+      <div class="nav-item" onclick="showPage('crm')">
+        <span class="nav-icon">◑</span> CRM ลูกค้า
+      </div>
+      <div class="nav-item" onclick="showPage('history')">
+        <span class="nav-icon">≡</span> ประวัติ
+      </div>
+      <div class="nav-item" onclick="showPage('report')">
+        <span class="nav-icon">▤</span> รายงาน P&L
+      </div>
+      <div class="nav-item" onclick="showPage('barcode')">
+        <span class="nav-icon">⊟</span> บาร์โค้ด
+      </div>
+      <div class="nav-item" onclick="showPage('settings')">
+        <span class="nav-icon">⚙</span> ตั้งค่าร้าน
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Dashboard -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">ภาพรวมร้าน</div>
+          <div class="page-sub" id="todayDate">วันนี้ —</div>
+        </div>
+      </div>
+      <div class="metric-grid" id="dashMetrics"></div>
+
+      <div class="ops-grid">
+        <div class="ops-card"><div class="ops-title">ขายหน้าร้าน / LINE OA</div><div class="ops-meta">ตัดสต็อก FIFO, บันทึกช่องทาง, ผูกลูกค้าด้วยเบอร์</div></div>
+        <div class="ops-card"><div class="ops-title">จำนำ / ขายฝาก</div><div class="ops-meta">ต่อดอก, ไถ่ถอน, เตือนครบกำหนดล่วงหน้า 7 วัน</div></div>
+        <div class="ops-card"><div class="ops-title">ออมทอง</div><div class="ops-meta">บันทึกงวด, คำนวณน้ำหนักทอง, แสดงใน LINE สมาชิก</div></div>
+        <div class="ops-card"><div class="ops-title">P&L ร้านทอง</div><div class="ops-meta">รวมยอดขาย, ดอกเบี้ยไถ่ถอน, กำไร, margin และ export CSV</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>🔔 ตั๋วจำนำใกล้ครบกำหนด (≤7 วัน)</span>
+          <span style="font-size:11px;color:var(--text3);font-weight:normal;">คลิกเพื่อส่งข้อความเตือนลูกค้า</span>
+        </div>
+        <div id="pawnAlerts"></div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        <div class="card">
+          <div class="section-title">สินค้าขายดี (วันนี้)</div>
+          <div id="topSales"><div class="empty"><div class="empty-text">ยังไม่มียอดขายวันนี้</div></div></div>
+        </div>
+        <div class="card">
+          <div class="section-title">สต็อกใกล้หมด (≤2 ชิ้น)</div>
+          <div id="lowStock"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stock -->
+    <div class="page" id="page-stock">
+      <div class="page-header">
+        <div>
+          <div class="page-title">สต็อกสินค้า</div>
+          <div class="page-sub">จัดการสินค้าทั้งหมด — ตัดสต็อกแบบ FIFO</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" onclick="openBuyModal()" id="btnOpenBuy">+ รับซื้อเข้า</button>
+          <button class="btn btn-primary" onclick="openAddModal()" id="btnOpenAdd">+ เพิ่มสินค้า</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <input type="text" id="stockSearch" placeholder="ค้นหารหัส / ชื่อ..." style="width:220px;" oninput="renderStock()">
+        <select id="stockFilter" onchange="renderStock()" style="width:160px;">
+          <option value="">ทุกประเภท</option>
+          <option value="SC">สร้อยคอ</option>
+          <option value="RG">แหวน</option>
+          <option value="SK">สร้อยข้อมือ</option>
+          <option value="EA">ต่างหู</option>
+          <option value="PD">จี้ / กรอบพระ</option>
+          <option value="GB">ทองแท่ง</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>รหัส</th>
+              <th>ชื่อสินค้า</th>
+              <th>ถาด</th>
+              <th>น้ำหนัก</th>
+              <th>ต้นทุนถัวเฉลี่ย</th>
+              <th>ราคาขาย</th>
+              <th>กำไร/ชิ้น</th>
+              <th>คงเหลือ</th>
+              <th>มูลค่า</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="stockTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Trays -->
+    <div class="page" id="page-trays">
+      <div class="page-header">
+        <div>
+          <div class="page-title">แผนถาดสินค้า</div>
+          <div class="page-sub">ถาดสร้อย 18 ถาด · ถาดหน้าตู้ 5 ถาด</div>
+        </div>
+      </div>
+      <div class="section-title">ถาดสร้อยคอ (18 ถาด — หลัก 5 เส้น/ถาด)</div>
+      <div class="tray-grid" id="trayGridSC"></div>
+      <div class="section-title" style="margin-top:28px;">ถาดหน้าตู้ (5 ถาด — แหวน + กรอบพระ)</div>
+      <div class="tray-grid" id="trayGridFront"></div>
+    </div>
+
+    <!-- Sell -->
+    <div class="page" id="page-sell">
+      <div class="page-header">
+        <div>
+          <div class="page-title">บันทึกขาย</div>
+          <div class="page-sub">ตัดสต็อกอัตโนมัติ — FIFO (ของเข้าก่อน ออกก่อน)</div>
+        </div>
+      </div>
+      <div class="alert alert-info">ระบบจะตัดสต็อกชิ้นที่รับเข้ามาก่อนสุดออกอัตโนมัติ (FIFO)</div>
+      <div class="card" style="max-width:580px;">
+        <div class="section-title">สแกนบาร์โค้ด หรือค้นหาสินค้า</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <div style="flex:1;position:relative;">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:16px;">⊟</span>
+            <input type="text" id="barcodeInput" placeholder="สแกนบาร์โค้ด หรือพิมพ์รหัสสินค้า..." style="width:100%;padding-left:34px;font-family:'IBM Plex Mono',monospace;" oninput="onBarcodeInput()" onkeydown="onBarcodeKey(event)" autocomplete="off">
+          </div>
+        </div>
+        <div class="item-search">
+          <input type="text" id="saleSearch" placeholder="ค้นหาชื่อสินค้า..." oninput="searchForSale()" autocomplete="off">
+          <div class="search-results" id="saleResults"></div>
+        </div>
+        <div id="selectedItem" style="display:none;">
+          <div class="price-preview" id="salePreview"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+            <div class="form-group">
+              <label>จำนวนที่ขาย</label>
+              <input type="number" id="saleQty" value="1" min="1" onchange="updateSalePreview()">
+            </div>
+            <div class="form-group">
+              <label>ส่วนลด (บาท)</label>
+              <input type="number" id="saleDiscount" value="0" min="0" onchange="updateSalePreview()">
+            </div>
+            <div class="form-group">
+              <label>ช่องทาง</label>
+              <select id="saleChannel">
+                <option>หน้าร้าน</option>
+                <option>LINE OA</option>
+                <option>Facebook</option>
+                <option>Shopee</option>
+                <option>อื่นๆ</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>ลูกค้า</label>
+              <input type="text" id="saleCustomer" placeholder="ชื่อลูกค้า">
+            </div>
+            <div class="form-group">
+              <label>เบอร์โทรลูกค้า</label>
+              <input type="tel" id="salePhone" placeholder="08x-xxx-xxxx" inputmode="numeric">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px;">
+            <button class="btn btn-primary" onclick="confirmSale()" style="flex:1;">✓ ยืนยันขาย</button>
+            <button class="btn btn-ghost" onclick="cancelSale()">ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="page" id="page-history">
+      <div class="page-header">
+        <div class="page-title">ประวัติรายการ</div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" onclick="filterHistory('all',this)">ทั้งหมด</div>
+        <div class="tab" onclick="filterHistory('sale',this)">ขาย</div>
+        <div class="tab" onclick="filterHistory('buy',this)">รับเข้า</div>
+      </div>
+      <div class="card" id="historyList"></div>
+    </div>
+
+    <!-- Report P&L -->
+    <div class="page" id="page-report">
+      <div class="page-header">
+        <div>
+          <div class="page-title">รายงานกำไร-ขาดทุน</div>
+          <div class="page-sub">P&L รายวัน และรายเดือน</div>
+        </div>
+        <button class="btn btn-ghost" onclick="exportReport()">⬇ Export CSV</button>
+      </div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchReport('daily',this)">รายวัน</div>
+        <div class="tab" onclick="switchReport('monthly',this)">รายเดือน</div>
+      </div>
+      <!-- Daily -->
+      <div id="reportDaily">
+        <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;">
+          <label style="font-size:13px;color:var(--text2);">เลือกวันที่</label>
+          <input type="date" id="reportDate" style="width:180px;" oninput="renderDailyReport()">
+        </div>
+        <div class="metric-grid" id="dailyMetrics" style="margin-bottom:20px;"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>เวลา</th><th>TXN</th><th>สินค้า</th><th>จำนวน</th><th>ต้นทุน/ชิ้น</th><th>ราคาขาย</th><th>ส่วนลด</th><th>รับเงิน</th><th>กำไร</th><th>ช่องทาง</th>
+            </tr></thead>
+            <tbody id="dailyTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Monthly -->
+      <div id="reportMonthly" style="display:none;">
+        <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;">
+          <label style="font-size:13px;color:var(--text2);">เดือน</label>
+          <input type="month" id="reportMonth" style="width:180px;" oninput="renderMonthlyReport()">
+        </div>
+        <div class="metric-grid" id="monthlyMetrics" style="margin-bottom:20px;"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>วันที่</th><th>ขาย (รายการ)</th><th>รายรับ</th><th>ต้นทุน</th><th>ค่ากำเหน็จ</th><th>กำไรสุทธิ</th><th>margin%</th>
+            </tr></thead>
+            <tbody id="monthlyTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barcode Management -->
+    <div class="page" id="page-barcode">
+      <div class="page-header">
+        <div>
+          <div class="page-title">จัดการบาร์โค้ด</div>
+          <div class="page-sub">พิมพ์ label บาร์โค้ดสำหรับติดสินค้า</div>
+        </div>
+        <button class="btn btn-primary" onclick="printAllBarcodes()">🖨 พิมพ์ทั้งหมด</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <input type="text" id="bcSearch" placeholder="ค้นหาสินค้า..." style="width:240px;" oninput="renderBarcodeList()">
+        <select id="bcFilter" style="width:160px;" onchange="renderBarcodeList()">
+          <option value="">ทุกประเภท</option>
+          <option value="SC">สร้อยคอ</option>
+          <option value="RG">แหวน</option>
+          <option value="SK">สร้อยข้อมือ</option>
+          <option value="EA">ต่างหู</option>
+          <option value="PD">จี้ / กรอบพระ</option>
+          <option value="GB">ทองแท่ง</option>
+        </select>
+      </div>
+      <div id="barcodeList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;"></div>
+    </div>
+
+    <!-- Shop Settings -->
+    <div class="page" id="page-settings">
+      <!-- Content rendered dynamically by renderSettings() -->
+    </div>
+
+    <!-- Pawn / Consignment -->
+    <div class="page" id="page-pawn">
+      <div class="page-header">
+        <div><div class="page-title">จำนำ / ขายฝาก</div><div class="page-sub">บันทึกตั๋ว คำนวณดอกเบี้ย ต่อดอก ไถ่ถอน</div></div>
+        <button class="btn btn-primary" onclick="openPawnModal()">+ รับจำนำใหม่</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <input type="text" id="pawnSearch" placeholder="ค้นหาชื่อ / เลขตั๋ว..." style="width:220px;" oninput="renderPawn()">
+        <select id="pawnStatusFilter" onchange="renderPawn()" style="width:160px;">
+          <option value="">ทุกสถานะ</option>
+          <option value="active">ยังจำนำอยู่</option>
+          <option value="due">ใกล้ครบกำหนด</option>
+          <option value="overdue">เกินกำหนด</option>
+          <option value="closed">ไถ่ถอนแล้ว</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>เลขตั๋ว</th><th>สินค้า</th><th>ลูกค้า</th><th>ยอดจำนำ</th><th>ดอกเบี้ย</th><th>ครบกำหนด</th><th>สถานะ</th><th></th></tr></thead>
+          <tbody id="pawnTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Savings -->
+    <div class="page" id="page-savings">
+      <div class="page-header">
+        <div><div class="page-title">ระบบออมทอง</div><div class="page-sub">เปิดบัญชี บันทึกยอดออม ปิดยอดรับสินค้า</div></div>
+        <button class="btn btn-primary" onclick="openSavingsModal()">+ เปิดบัญชีออมทอง</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>รหัสบัญชี</th><th>ลูกค้า</th><th>ฝากเอง (บ.)</th><th>โบนัส (บ.)</th><th>รวม (บ.)</th><th>งวด</th><th>สถานะ</th><th></th></tr></thead>
+          <tbody id="savingsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CRM -->
+    <div class="page" id="page-crm">
+      <div class="page-header">
+        <div><div class="page-title">CRM ลูกค้า</div><div class="page-sub">ประวัติซื้อขาย จำนำ ออมทอง</div></div>
+      </div>
+      <input type="text" id="crmSearch" placeholder="ค้นหาชื่อลูกค้า..." style="width:260px;margin-bottom:16px;" oninput="renderCRM()">
+      <div class="crm-grid" id="crmGrid"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Add Product Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h2 id="addModalTitle">เพิ่มสินค้าเข้าสต็อก</h2>
+    <input type="hidden" id="addEditCode">
+    <input type="hidden" id="addOriginalCode">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>ประเภท</label>
+        <select id="addType" onchange="autoCode()">
+          <option value="SC">สร้อยคอ</option>
+          <option value="RG">แหวน</option>
+          <option value="SK">สร้อยข้อมือ</option>
+          <option value="EA">ต่างหู</option>
+          <option value="PD">จี้ / กรอบพระ</option>
+          <option value="GB">ทองแท่ง</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>รหัสสินค้า</label>
+        <input type="text" id="addCode" placeholder="SC-001">
+      </div>
+      <div class="form-group full">
+        <label>ชื่อสินค้า / ลาย</label>
+        <input type="text" id="addName" placeholder="เช่น สร้อยคอ ลายโซ่">
+      </div>
+      <div class="form-group">
+        <label>น้ำหนัก</label>
+        <select id="addWeight" onchange="calcAddPrice()">
+          <optgroup label="— หน่วยกรัม —">
+            <option value="g0.3">0.3 กรัม</option>
+            <option value="g0.5">0.5 กรัม</option>
+            <option value="g1">1 กรัม</option>
+          </optgroup>
+          <optgroup label="— หน่วยสลึง —">
+            <option value="0.5">ครึ่งสลึง</option>
+            <option value="1">1 สลึง</option>
+            <option value="2">2 สลึง</option>
+          </optgroup>
+          <optgroup label="— หน่วยบาท —">
+            <option value="4" selected>1 บาท</option>
+            <option value="8">2 บาท</option>
+            <option value="12">3 บาท</option>
+            <option value="16">4 บาท</option>
+            <option value="20">5 บาท</option>
+            <option value="24">6 บาท</option>
+            <option value="28">7 บาท</option>
+            <option value="32">8 บาท</option>
+            <option value="36">9 บาท</option>
+            <option value="40">10 บาท</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ถาดที่</label>
+        <input type="text" id="addTray" placeholder="เช่น ถาดสร้อย-01">
+      </div>
+      <div class="form-group">
+        <label>ราคารับเข้า (ต้นทุน)</label>
+        <input type="number" id="addCost" placeholder="69,702" oninput="calcAddPrice()">
+      </div>
+      <div class="form-group">
+        <label>ค่ากำเหน็จ / ค่าทำ</label>
+        <input type="number" id="addFee" value="1000" oninput="calcAddPrice()">
+      </div>
+      <div class="form-group">
+        <label>จำนวน</label>
+        <input type="number" id="addQty" value="1" min="1" oninput="calcAddPrice()">
+      </div>
+      <div class="form-group">
+        <label>แหล่งที่มา</label>
+        <select id="addSource">
+          <option>ซัพพลายเออร์</option>
+          <option>รับซื้อจากลูกค้า</option>
+          <option>อื่นๆ</option>
+        </select>
+      </div>
+    </div>
+    <div class="price-preview" id="addPreview" style="margin-top:12px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addModal')">ยกเลิก</button>
+      <button class="btn btn-primary" id="addSaveBtn" onclick="addProduct()">บันทึกเข้าสต็อก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lot Modal -->
+<div class="modal-overlay" id="lotModal">
+  <div class="modal" style="max-width:460px;">
+    <h2 id="lotModalTitle">เพิ่ม / แก้ไขล็อต</h2>
+    <input type="hidden" id="lotProductCode">
+    <input type="hidden" id="lotIndex">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>สินค้า</label>
+        <input type="text" id="lotProductName" disabled>
+      </div>
+      <div class="form-group">
+        <label>ต้นทุนล็อต</label>
+        <input type="number" id="lotCost">
+      </div>
+      <div class="form-group">
+        <label>จำนวน</label>
+        <input type="number" id="lotQty" min="0">
+      </div>
+      <div class="form-group">
+        <label>วันที่รับเข้า</label>
+        <input type="date" id="lotDate">
+      </div>
+      <div class="form-group">
+        <label>แหล่งที่มา</label>
+        <input type="text" id="lotSource" placeholder="เช่น ซัพพลายเออร์">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('lotModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveLot()">บันทึกล็อต</button>
+    </div>
+  </div>
+</div>
+
+<!-- Buy (receive) Modal -->
+<div class="modal-overlay" id="buyModal">
+  <div class="modal">
+    <h2>รับซื้อทองเข้า</h2>
+    <div class="alert alert-info">ต้องบันทึกเลขบัตรประชาชนทุกครั้ง (กฎหมายกำหนด)</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>รายการ / ชื่อสินค้า</label>
+        <input type="text" id="buyName" placeholder="เช่น สร้อยเก่า ลายผ่า">
+      </div>
+      <div class="form-group">
+        <label>น้ำหนัก</label>
+        <select id="buyWeight" onchange="calcBuyPrice()">
+          <optgroup label="— หน่วยกรัม —">
+            <option value="g0.3">0.3 กรัม</option>
+            <option value="g0.5">0.5 กรัม</option>
+            <option value="g1">1 กรัม</option>
+          </optgroup>
+          <optgroup label="— หน่วยสลึง —">
+            <option value="0.5">ครึ่งสลึง</option>
+            <option value="1">1 สลึง</option>
+            <option value="2">2 สลึง</option>
+          </optgroup>
+          <optgroup label="— หน่วยบาท —">
+            <option value="4">1 บาท</option>
+            <option value="8">2 บาท</option>
+            <option value="12">3 บาท</option>
+            <option value="16">4 บาท</option>
+            <option value="20">5 บาท</option>
+            <option value="24">6 บาท</option>
+            <option value="28">7 บาท</option>
+            <option value="32">8 บาท</option>
+            <option value="36">9 บาท</option>
+            <option value="40">10 บาท</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>%ทอง</label>
+        <select id="buyPurity">
+          <option value="0.965">96.5%</option>
+          <option value="0.99">99%</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ส่วนต่าง (บาท)</label>
+        <input type="number" id="buySpread" value="300" oninput="calcBuyPrice()">
+      </div>
+      <div class="form-group">
+        <label>ราคารับซื้อ</label>
+        <input type="number" id="buyPrice" oninput="">
+      </div>
+      <div class="form-group">
+        <label>ชื่อลูกค้า</label>
+        <input type="text" id="buyCustomer" placeholder="ชื่อ-นามสกุล">
+      </div>
+      <div class="form-group full">
+        <label>เลขบัตรประชาชน *</label>
+        <input type="text" id="buyID" placeholder="x-xxxx-xxxxx-xx-x" maxlength="17">
+      </div>
+      <div class="form-group">
+        <label>จะนำเข้าสต็อกต่อไหม?</label>
+        <select id="buyToStock">
+          <option value="yes">ใช่ — เพิ่มเป็นสินค้า</option>
+          <option value="no">ไม่ — บันทึกรับซื้อเฉยๆ</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ค่ากำเหน็จ (ถ้านำเข้าสต็อก)</label>
+        <input type="number" id="buyFee" value="1000">
+      </div>
+    </div>
+    <div class="price-preview" id="buyPreview" style="margin-top:12px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('buyModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="confirmBuy()">ยืนยันรับซื้อ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Savings Payment Modal -->
+<div class="modal-overlay" id="savPayModal">
+  <div class="modal" style="max-width:460px;">
+    <h2 id="savPayModalTitle">💰 บันทึกยอดออมทอง</h2>
+    <input type="hidden" id="savPayId">
+    <input type="hidden" id="savPayIndex">
+    <div id="savPayInfo" style="font-size:13px;color:var(--text2);background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:16px;"></div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>ลูกค้าฝากมา (บาท)</label>
+        <input type="number" id="savPayDeposit" placeholder="เช่น 500" oninput="calcSavPay()">
+      </div>
+      <div class="form-group">
+        <label>โบนัส Top-up (%)</label>
+        <input type="number" id="savPayTopup" placeholder="เช่น 100" oninput="calcSavPay()">
+      </div>
+      <div class="form-group full">
+        <label>ราคาทองวันนี้ (บาท/บาท) — ดึงจาก SPOT หน้าร้านอัตโนมัติ</label>
+        <input type="number" id="savPayGoldPrice" oninput="calcSavPay()">
+      </div>
+    </div>
+    <div id="savPayCalc" style="background:var(--amber-bg);border-radius:10px;padding:14px;margin-top:4px;display:none;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+        <span>ยอดลูกค้าฝาก</span><span id="savPayDepositShow" style="font-family:'IBM Plex Mono',monospace;">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+        <span id="savPayBonusLabel">โบนัส Top-up</span><span id="savPayBonusShow" style="font-family:'IBM Plex Mono',monospace;color:var(--green);">—</span>
+      </div>
+      <div style="border-top:1px dashed rgba(139,94,10,0.3);padding-top:8px;margin-top:4px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:var(--amber);">
+        <span>ยอดรวมงวดนี้</span><span id="savPayTotalShow" style="font-family:'IBM Plex Mono',monospace;">—</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('savPayModal')">ยกเลิก</button>
+      <button class="btn btn-primary" id="savPaySaveBtn" onclick="confirmSavingsPayment()">✓ บันทึก + แสดงสรุป</button>
+    </div>
+  </div>
+</div>
+
+<!-- Savings Modal -->
+<div class="modal-overlay" id="savingsModal">
+  <div class="modal" style="max-width:460px;">
+    <h2 id="savingsModalTitle">✨ เปิดบัญชีออมทอง</h2>
+    <input type="hidden" id="savEditId">
+    <div class="form-grid">
+      <div class="form-group full"><label>ชื่อลูกค้า</label><input type="text" id="savCustomer" placeholder="ชื่อ-นามสกุล"></div>
+      <div class="form-group full"><label>เบอร์โทร / LINE</label><input type="text" id="savPhone" placeholder="08x-xxx-xxxx"></div>
+      <div class="form-group">
+        <label>งวดละ</label>
+        <select id="savPeriod">
+          <option value="weekly">รายสัปดาห์</option>
+          <option value="monthly" selected>รายเดือน</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>โบนัส Top-up (%)</label>
+        <input type="number" id="savTopupPct" value="100" min="0" max="999" placeholder="เช่น 100 = ได้เพิ่ม 100%">
+      </div>
+    </div>
+    <div style="background:var(--amber-bg);border-radius:10px;padding:12px 14px;margin-top:8px;font-size:13px;color:var(--amber);">
+      💡 ตัวอย่าง: ลูกค้าฝาก 500 บาท + Top-up 100% = รวม <strong>1,000 บาท</strong>/งวด
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('savingsModal')">ยกเลิก</button>
+      <button class="btn btn-primary" id="savingsSaveBtn" onclick="confirmSavings()">✦ เปิดบัญชี</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transaction Modal -->
+<div class="modal-overlay" id="txnModal">
+  <div class="modal">
+    <h2>แก้ไขประวัติรายการ</h2>
+    <input type="hidden" id="txnEditKey">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>เลขที่รายการ</label>
+        <input type="text" id="txnNo">
+      </div>
+      <div class="form-group">
+        <label>ประเภท</label>
+        <select id="txnType">
+          <option value="sale">ขาย</option>
+          <option value="buy">รับเข้า</option>
+          <option value="buy_from_customer">รับซื้อ</option>
+          <option value="pawn_redeem">ไถ่ถอนจำนำ</option>
+          <option value="savings_deposit">ฝากออมทอง</option>
+          <option value="savings_close">ปิดบัญชีออมทอง</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>รายการสินค้า</label>
+        <input type="text" id="txnProductName">
+      </div>
+      <div class="form-group">
+        <label>จำนวน</label>
+        <input type="number" id="txnQty" min="1">
+      </div>
+      <div class="form-group">
+        <label>ต้นทุน / เงินต้น</label>
+        <input type="number" id="txnCost">
+      </div>
+      <div class="form-group">
+        <label>ยอดรวม</label>
+        <input type="number" id="txnTotal">
+      </div>
+      <div class="form-group">
+        <label>กำไร / ดอกเบี้ย</label>
+        <input type="number" id="txnProfit">
+      </div>
+      <div class="form-group">
+        <label>ส่วนลด</label>
+        <input type="number" id="txnDiscount">
+      </div>
+      <div class="form-group">
+        <label>ช่องทาง</label>
+        <input type="text" id="txnChannel">
+      </div>
+      <div class="form-group">
+        <label>ลูกค้า</label>
+        <input type="text" id="txnCustomer">
+      </div>
+      <div class="form-group full">
+        <label>วันที่และเวลา</label>
+        <input type="datetime-local" id="txnDate">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('txnModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveTransactionEdit()">บันทึกการแก้ไข</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Modal -->
+<div class="modal-overlay" id="customerModal">
+  <div class="modal" style="max-width:460px;">
+    <h2>แก้ไขลูกค้า</h2>
+    <input type="hidden" id="customerEditId">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>ชื่อลูกค้า</label>
+        <input type="text" id="customerName">
+      </div>
+      <div class="form-group full">
+        <label>เบอร์โทร / LINE</label>
+        <input type="text" id="customerPhone">
+      </div>
+      <div class="form-group full">
+        <label>คะแนนสะสม</label>
+        <input type="number" id="customerPoints">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('customerModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveCustomerEdit()">บันทึกการแก้ไข</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ============================================================
+// FIREBASE SETUP — ใส่ config ของคุณตรงนี้ (เปลี่ยนแค่ค่าใน {} นี้)
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBvSzkwvetsGtthnNljRZGMnlUC3pzfhXs",
+  authDomain: "gold-shop-acf19.firebaseapp.com",
+  projectId: "gold-shop-acf19",
+  storageBucket: "gold-shop-acf19.firebasestorage.app",
+  messagingSenderId: "10469108848",
+  appId: "1:10469108848:web:c6bcefb2444ce4d55458b5"
+};
+// ============================================================
+
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import {
+  getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc
+} from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
+const fbApp = initializeApp(firebaseConfig);
+const fbDb = getFirestore(fbApp);
+
+// ทำให้ไฟล์ส่วนล่าง (script ปกติ) เรียกใช้ได้
+window._fb = {
+  saveDoc: async (col, id, data) => {
+    try { await setDoc(doc(fbDb, col, String(id)), data); }
+    catch(e) { console.error('Save failed:', e); alert('บันทึกไม่สำเร็จ — ตรวจ internet'); }
+  },
+  deleteDoc: async (col, id) => {
+    try { await deleteDoc(doc(fbDb, col, String(id))); }
+    catch(e) { console.error('Delete failed:', e); }
+  },
+  listen: (col, callback) => {
+    return onSnapshot(collection(fbDb, col), (snap) => {
+      const items = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
+      callback(items);
+    });
+  }
+};
+window._fbReady = true;
+</script>
+
+<script>
+// ============ STATE ============
+const GOLD_PRICE_API_URL = 'https://ramruaydee-linebot-production.up.railway.app/api/gold-price';
+let spot = 72230;
+let products = [];
+let transactions = [];
+let pawns = [];
+let savingsAccounts = [];
+let customers = [];
+let selectedSaleProduct = null;
+let historyFilter = 'all';
+let currentUser = null;
+let txnCounter = parseInt(localStorage.getItem('gd_txn_counter') || '0');
+
+function nextTxnNo() {
+  txnCounter++;
+  localStorage.setItem('gd_txn_counter', txnCounter);
+  return 'TXN-' + String(txnCounter).padStart(4, '0');
+}
+
+// ============ ROLE PERMISSION ============
+// admin: ทุกอย่าง | cashier: ขาย+รับซื้อ+ออม+จำนำ (ไม่มีลบ/แก้สต็อก/report) | viewer: ดูอย่างเดียว
+const ROLE_PERMS = {
+  admin:   { addProduct:true,  editProduct:true,  deleteProduct:true,  addLot:true,  editLot:true,  editTransaction:true,  editCustomer:true,  sell:true,  buy:true,  pawn:true,  savings:true,  report:true,  viewStock:true },
+  cashier: { addProduct:false, editProduct:false, deleteProduct:false, addLot:false, editLot:false, editTransaction:true,  editCustomer:true,  sell:true,  buy:true,  pawn:true,  savings:true,  report:false, viewStock:true },
+  viewer:  { addProduct:false, editProduct:false, deleteProduct:false, addLot:false, editLot:false, editTransaction:false, editCustomer:false, sell:false, buy:false, pawn:false, savings:false, report:true,  viewStock:true },
+};
+
+function can(action) {
+  if (!currentUser) return false;
+  return !!(ROLE_PERMS[currentUser.role] || {})[action];
+}
+
+function requirePerm(action, msg) {
+  if (!can(action)) {
+    showToast(`⛔ ${msg || 'คุณไม่มีสิทธิ์ทำรายการนี้'} (Role: ${currentUser?.role || '—'})`, 'error');
+    return false;
+  }
+  return true;
+}
+
+function showToast(msg, type='info') {
+  let t = document.getElementById('appToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'appToast';
+    t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;transition:opacity 0.3s;box-shadow:0 4px 16px rgba(0,0,0,0.18);';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = type==='error' ? '#B83232' : type==='success' ? '#2D7D46' : '#1A5FA8';
+  t.style.color = '#fff';
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+// ============ USERS ============
+const USERS = [
+  { username:'admin',   password:'1234', name:'ผู้จัดการ',   role:'admin',   icon:'👑' },
+  { username:'cashier', password:'1234', name:'แคชเชียร์',   role:'cashier', icon:'💁' },
+  { username:'viewer',  password:'1234', name:'ผู้สังเกตการณ์', role:'viewer', icon:'👁️' },
+];
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const user = USERS.find(x => x.username===u && x.password===p);
+  if (!user) { document.getElementById('loginErr').style.display='block'; return; }
+  currentUser = user;
+  localStorage.setItem('gd_session', JSON.stringify(user));
+  document.getElementById('loginOverlay').classList.remove('open');
+  document.getElementById('sidebarUserName').textContent = user.name;
+  document.getElementById('sidebarRoleBadge').textContent = user.role==='admin'?'Admin':user.role==='cashier'?'Cashier':'View';
+  document.getElementById('sidebarUserIcon').textContent = user.icon;
+  applyRoleUI();
+}
+
+function showLogout() {
+  if (confirm('ออกจากระบบ?')) {
+    currentUser = null;
+    localStorage.removeItem('gd_session');
+    document.getElementById('loginUser').value='';
+    document.getElementById('loginPass').value='';
+    document.getElementById('loginErr').style.display='none';
+    document.getElementById('loginOverlay').classList.add('open');
+  }
+}
+
+function checkSession() {
+  const saved = localStorage.getItem('gd_session');
+  if (saved) {
+    currentUser = JSON.parse(saved);
+    document.getElementById('loginOverlay').classList.remove('open');
+    document.getElementById('sidebarUserName').textContent = currentUser.name;
+    document.getElementById('sidebarRoleBadge').textContent = currentUser.role==='admin'?'Admin':currentUser.role==='cashier'?'Cashier':'View';
+    document.getElementById('sidebarUserIcon').textContent = currentUser.icon;
+    applyRoleUI();
+  }
+}
+
+function applyRoleUI() {
+  const role = currentUser?.role || 'viewer';
+  // ซ่อน/แสดง nav items
+  const navMap = {
+    'sell':    can('sell'),
+    'stock':   can('viewStock'),
+    'report':  can('report'),
+  };
+  // ซ่อนเมนูรายงาน ถ้า cashier
+  document.querySelectorAll('.nav-item').forEach(n => {
+    const onclick = n.getAttribute('onclick') || '';
+    if (onclick.includes("'report'") && !can('report')) n.style.display='none';
+    else n.style.display='';
+  });
+  // แสดง role badge บน sell page
+  const sellAlert = document.querySelector('#page-sell .alert-info');
+  if (sellAlert) {
+    if (!can('sell')) {
+      sellAlert.style.background = 'var(--red-bg)';
+      sellAlert.style.color = 'var(--red)';
+      sellAlert.textContent = `⛔ Role "${role}" ไม่มีสิทธิ์บันทึกขาย`;
+    } else {
+      sellAlert.style.background = '';
+      sellAlert.style.color = '';
+      sellAlert.textContent = 'ระบบจะตัดสต็อกชิ้นที่รับเข้ามาก่อนสุดออกอัตโนมัติ (FIFO)';
+    }
+  }
+}
+
+const WEIGHT_LABELS = {
+  'g0.3':'0.3 กรัม', 'g0.5':'0.5 กรัม', 'g1':'1 กรัม',
+  0.5:'ครึ่งสลึง', 1:'1 สลึง', 2:'2 สลึง',
+  4:'1 บาท', 8:'2 บาท', 12:'3 บาท', 16:'4 บาท', 20:'5 บาท',
+  24:'6 บาท', 28:'7 บาท', 32:'8 บาท', 36:'9 บาท', 40:'10 บาท'
+};
+const TYPE_LABELS = { SC:'สร้อยคอ', RG:'แหวน', SK:'สร้อยข้อมือ', EA:'ต่างหู', PD:'จี้/กรอบพระ', GB:'ทองแท่ง' };
+const BADGE_CLASSES = { SC:'badge-sc', RG:'badge-rg', SK:'badge-sk', EA:'badge-ea', PD:'badge-pd', GB:'badge-gb' };
+
+const TRAYS_SC = [
+  'ถาดสร้อย-01','ถาดสร้อย-02','ถาดสร้อย-03','ถาดสร้อย-04','ถาดสร้อย-05','ถาดสร้อย-06',
+  'ถาดสร้อย-07','ถาดสร้อย-08','ถาดสร้อย-09','ถาดสร้อย-10','ถาดสร้อย-11','ถาดสร้อย-12',
+  'ถาดสร้อย-13','ถาดสร้อย-14','ถาดสร้อย-15','ถาดสร้อย-16','ถาดสร้อย-17','ถาดสร้อย-18'
+];
+const TRAYS_FRONT = ['หน้าตู้-01','หน้าตู้-02','หน้าตู้-03','หน้าตู้-04','หน้าตู้-05'];
+
+function save() {
+  // เก็บใน localStorage เป็น cache (กรณี offline)
+  localStorage.setItem('gd_products', JSON.stringify(products));
+  localStorage.setItem('gd_transactions', JSON.stringify(transactions));
+  localStorage.setItem('gd_pawns', JSON.stringify(pawns));
+  localStorage.setItem('gd_savings', JSON.stringify(savingsAccounts));
+  localStorage.setItem('gd_customers', JSON.stringify(customers));
+
+  if (!window._fbReady) return;
+
+  customers.forEach(c => {
+    const id = c.id || c.phone || ('cust_' + (c.name || 'unknown') + '_' + Date.now());
+    if (!c.id) c.id = id;
+    window._fb.saveDoc('customers', id, c);
+  });
+  pawns.forEach(p => {
+    const id = p._docId || p.id || p.pawnNo || p.ticket || ('pawn_' + Date.now());
+    if (!p.id) p.id = p.ticket || p.pawnNo || id;
+    if (!p._docId) p._docId = id;
+    window._fb.saveDoc('pawns', p._docId, p);
+  });
+  savingsAccounts.forEach(s => {
+    const id = s._docId || s.id || s.accountNo || ('sv_' + Date.now());
+    if (!s.id) s.id = id;
+    if (!s._docId) s._docId = id;
+    window._fb.saveDoc('savings', s._docId, s);
+  });
+  transactions.forEach(t => {
+    const id = t._docId || t.id || t.txnNo || ('txn_' + Date.now());
+    if (!t.id) t.id = id;
+    if (!t._docId) t._docId = id;
+    window._fb.saveDoc('transactions', t._docId, t);
+  });
+  products.forEach(p => {
+    const id = p.id || p.code || ('prod_' + Date.now());
+    if (!p.id) p.id = id;
+    window._fb.saveDoc('products', id, p);
+  });
+}
+
+function setupRealtimeSync() {
+  if (!window._fbReady) {
+    setTimeout(setupRealtimeSync, 500);
+    return;
+  }
+
+  window._fb.listen('products', (items) => {
+    products = items;
+    if (typeof renderStock === 'function') renderStock();
+    if (typeof renderDashboard === 'function') renderDashboard();
+  });
+
+  window._fb.listen('transactions', (items) => {
+    transactions = items;
+    if (typeof renderHistory === 'function') renderHistory();
+  });
+
+  window._fb.listen('pawns', (items) => {
+    pawns = items;
+    if (typeof renderPawn === 'function') renderPawn();
+  });
+
+  window._fb.listen('savings', (items) => {
+    savingsAccounts = items;
+    if (typeof renderSavings === 'function') renderSavings();
+  });
+
+  window._fb.listen('customers', (items) => {
+    customers = items;
+    if (typeof renderCRM === 'function') renderCRM();
+  });
+
+  console.log('Real-time sync activated');
+}
+
+// เริ่ม sync เมื่อหน้าโหลดเสร็จ
+window.addEventListener('load', () => {
+  setTimeout(setupRealtimeSync, 1000);
+  setTimeout(applyShopSettings, 100);
+  setTimeout(checkAutoBackupReminder, 5000);
+});
+
+// ============ NAV ============
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id==='dashboard') renderDashboard();
+  if (id==='stock') renderStock();
+  if (id==='trays') renderTrays();
+  if (id==='history') renderHistory();
+  if (id==='report') { initReportDates(); renderDailyReport(); }
+  if (id==='barcode') renderBarcodeList();
+  if (id==='pawn') renderPawn();
+  if (id==='savings') renderSavings();
+  if (id==='crm') renderCRM();
+  if (id==='sell') { setTimeout(()=>document.getElementById('barcodeInput').focus(),100); }
+  if (id==='settings') renderSettings();
+}
+
+// ============ SHOP SETTINGS (Logo + Name) ============
+function getShopSettings() {
+  const saved = localStorage.getItem('shop_settings');
+  if (saved) return JSON.parse(saved);
+  return {
+    name: 'ห้างทองร่ำรวยดี',
+    logo: '◈',
+    logoImage: '',
+    phone: '02-xxx-xxxx',
+    address: ''
+  };
+}
+
+function saveShopSettings(s) {
+  localStorage.setItem('shop_settings', JSON.stringify(s));
+  applyShopSettings();
+  if (window._fbReady) {
+    window._fb.saveDoc('settings', 'shop', s);
+  }
+}
+
+function applyShopSettings() {
+  const s = getShopSettings();
+  document.title = 'ระบบสต็อกทอง — ' + s.name;
+  document.querySelectorAll('.shop-name').forEach(el => {
+    if (s.logoImage) {
+      el.innerHTML = `<img src="${s.logoImage}" style="width:32px;height:32px;border-radius:6px;vertical-align:middle;margin-right:8px;object-fit:cover;"> ${s.name}`;
+    } else {
+      el.innerHTML = (s.logo || '◈') + ' ' + s.name;
+    }
+  });
+}
+
+function handleLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 500000) {
+    alert('⚠️ ไฟล์ใหญ่เกินไป (ต้องน้อยกว่า 500KB)\nลองใช้รูปที่เล็กกว่า หรือ resize ก่อน');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      // Resize ให้เป็น 128x128 max
+      const canvas = document.createElement('canvas');
+      const max = 128;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > max) { h = h * max / w; w = max; } }
+      else       { if (h > max) { w = w * max / h; h = max; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/png');
+
+      const s = getShopSettings();
+      s.logoImage = dataUrl;
+      saveShopSettings(s);
+      renderSettings();
+      alert('✅ อัพโหลดโลโก้สำเร็จ');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLogoImage() {
+  if (!confirm('ลบรูปโลโก้ออก?')) return;
+  const s = getShopSettings();
+  s.logoImage = '';
+  saveShopSettings(s);
+  renderSettings();
+}
+
+function renderSettings() {
+  const s = getShopSettings();
+  const el = document.getElementById('page-settings');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="page-header">
+      <h2>⚙️ ตั้งค่าร้าน</h2>
+      <p style="color:var(--text2);font-size:13px;">ปรับชื่อร้าน โลโก้ ข้อมูลติดต่อ และจัดการ Backup</p>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;padding:20px;">
+      <h3 style="margin-bottom:14px;">🎨 ข้อมูลร้าน</h3>
+
+      <div class="form-group">
+        <label>ชื่อร้าน</label>
+        <input type="text" id="setShopName" value="${s.name.replace(/"/g,'&quot;')}" placeholder="เช่น ห้างทองร่ำรวยดี">
+      </div>
+
+      <div class="form-group">
+        <label>โลโก้ร้าน (รูปภาพ)</label>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px;">
+          <div id="logoPreview" style="width:80px;height:80px;border-radius:12px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0;">
+            ${s.logoImage
+              ? `<img src="${s.logoImage}" style="width:100%;height:100%;object-fit:cover;">`
+              : (s.logo || '◈')
+            }
+          </div>
+          <div style="flex:1;">
+            <button class="btn" onclick="document.getElementById('logoFileInput').click()">📤 เลือกรูป</button>
+            ${s.logoImage ? '<button class="btn btn-danger" onclick="removeLogoImage()" style="margin-left:8px;">🗑 ลบรูป</button>' : ''}
+            <input type="file" id="logoFileInput" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)">
+            <p style="font-size:11px;color:var(--text3);margin-top:6px;">รองรับ JPG, PNG (ไม่เกิน 500KB) — ระบบจะย่อขนาดให้อัตโนมัติ</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>หรือใช้สัญลักษณ์ / Emoji (ถ้าไม่มีรูป)</label>
+        <input type="text" id="setShopLogo" value="${(s.logo||'').replace(/"/g,'&quot;')}" placeholder="เช่น ◈ 💎 🏆 ⭐">
+        <small style="color:var(--text3);font-size:11px;">ใส่สัญลักษณ์หรือ emoji — จะใช้เมื่อไม่มีรูปโลโก้</small>
+      </div>
+
+      <div class="form-group">
+        <label>เบอร์โทรร้าน</label>
+        <input type="text" id="setShopPhone" value="${(s.phone||'').replace(/"/g,'&quot;')}" placeholder="02-xxx-xxxx">
+      </div>
+
+      <div class="form-group">
+        <label>ที่อยู่ร้าน</label>
+        <textarea id="setShopAddress" rows="2" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;">${(s.address||'').replace(/</g,'&lt;')}</textarea>
+      </div>
+
+      <button class="btn btn-primary" onclick="doSaveShopSettings()">💾 บันทึกการตั้งค่า</button>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;padding:20px;">
+      <h3 style="margin-bottom:14px;">💾 จัดการข้อมูล (Backup)</h3>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:14px;">
+        Backup ข้อมูลทุกอย่างเป็นไฟล์ JSON เก็บไว้ในเครื่องของคุณ — ป้องกันข้อมูลหาย
+      </p>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="btn btn-primary" onclick="downloadBackup()">📥 ดาวน์โหลด Backup</button>
+        <button class="btn" onclick="document.getElementById('restoreFile').click()">📤 Restore จากไฟล์</button>
+        <input type="file" id="restoreFile" accept=".json" style="display:none;" onchange="restoreBackup(event)">
+      </div>
+
+      <div id="backupStatus" style="padding:10px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text2);">
+        <div>📊 ข้อมูลปัจจุบัน:</div>
+        <div style="margin-top:6px;line-height:1.8;">
+          • สินค้า: <b id="cnt-products">0</b> รายการ<br>
+          • ธุรกรรม: <b id="cnt-trans">0</b> รายการ<br>
+          • ตั๋วจำนำ: <b id="cnt-pawns">0</b> รายการ<br>
+          • บัญชีออม: <b id="cnt-savings">0</b> รายการ<br>
+          • ลูกค้า: <b id="cnt-customers">0</b> ราย<br>
+          • Backup ล่าสุด: <b id="lastBackup">ยังไม่เคย</b>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;padding:12px;background:#FFF8DC;border-radius:8px;color:#8B5E0A;font-size:12px;">
+        <b>⚠️ คำแนะนำ:</b> ควร Backup สัปดาห์ละ 1 ครั้ง — เก็บไฟล์ใน Google Drive หรือส่งให้ตัวเองทาง LINE
+      </div>
+    </div>
+
+    <div class="card" style="padding:20px;">
+      <h3 style="margin-bottom:14px;">⏰ Auto-Backup เตือนความจำ</h3>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="autoBackupEnabled" ${getAutoBackupEnabled() ? 'checked' : ''} onchange="toggleAutoBackup()">
+          <span>เปิดการเตือน Backup ทุก 7 วัน</span>
+        </label>
+      </div>
+      <p style="font-size:12px;color:var(--text3);">
+        ระบบจะแจ้งเตือนเมื่อถึงเวลา Backup — คลิกแล้วระบบจะดาวน์โหลดไฟล์ให้อัตโนมัติ
+      </p>
+    </div>
+  `;
+
+  updateBackupStats();
+}
+
+function doSaveShopSettings() {
+  const s = {
+    name: document.getElementById('setShopName').value.trim() || 'ห้างทอง',
+    logo: document.getElementById('setShopLogo').value.trim() || '◈',
+    phone: document.getElementById('setShopPhone').value.trim(),
+    address: document.getElementById('setShopAddress').value.trim()
+  };
+  saveShopSettings(s);
+  alert('✅ บันทึกการตั้งค่าเรียบร้อย');
+}
+
+function updateBackupStats() {
+  const last = localStorage.getItem('lastBackupDate');
+  document.getElementById('cnt-products').textContent = (products||[]).length;
+  document.getElementById('cnt-trans').textContent = (transactions||[]).length;
+  document.getElementById('cnt-pawns').textContent = (pawns||[]).length;
+  document.getElementById('cnt-savings').textContent = (savingsAccounts||[]).length;
+  document.getElementById('cnt-customers').textContent = (customers||[]).length;
+  document.getElementById('lastBackup').textContent = last
+    ? new Date(last).toLocaleDateString('th-TH', {day:'2-digit', month:'short', year:'numeric'})
+    : 'ยังไม่เคย';
+}
+
+function downloadBackup() {
+  const backup = {
+    version: 1,
+    exportDate: new Date().toISOString(),
+    shopSettings: getShopSettings(),
+    products: products || [],
+    transactions: transactions || [],
+    pawns: pawns || [],
+    savingsAccounts: savingsAccounts || [],
+    customers: customers || [],
+    spot: spot
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = URL.createObjectURL(blob);
+  a.download = `goldshop-backup-${date}.json`;
+  a.click();
+
+  localStorage.setItem('lastBackupDate', new Date().toISOString());
+  setTimeout(updateBackupStats, 500);
+  alert('✅ Backup สำเร็จ — ไฟล์อยู่ในโฟลเดอร์ Downloads');
+}
+
+function restoreBackup(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!confirm('⚠️ การ Restore จะเขียนทับข้อมูลปัจจุบัน ดำเนินการต่อ?')) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.products) products = data.products;
+      if (data.transactions) transactions = data.transactions;
+      if (data.pawns) pawns = data.pawns;
+      if (data.savingsAccounts) savingsAccounts = data.savingsAccounts;
+      if (data.customers) customers = data.customers;
+      if (data.shopSettings) saveShopSettings(data.shopSettings);
+      save();
+      alert('✅ Restore สำเร็จ — Reload หน้าเพื่อดูข้อมูลใหม่');
+      setTimeout(()=>location.reload(), 1000);
+    } catch (err) {
+      alert('❌ ไฟล์ Backup ไม่ถูกต้อง');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function getAutoBackupEnabled() {
+  return localStorage.getItem('autoBackupEnabled') === '1';
+}
+
+function toggleAutoBackup() {
+  const enabled = document.getElementById('autoBackupEnabled').checked;
+  localStorage.setItem('autoBackupEnabled', enabled ? '1' : '0');
+  if (enabled) {
+    alert('✅ เปิดการเตือน Backup ทุก 7 วันแล้ว');
+  }
+}
+
+function checkAutoBackupReminder() {
+  if (!getAutoBackupEnabled()) return;
+  const last = localStorage.getItem('lastBackupDate');
+  if (!last) {
+    showBackupReminder('ยังไม่เคย Backup เลย');
+    return;
+  }
+  const lastDate = new Date(last);
+  const daysSince = Math.floor((Date.now() - lastDate.getTime()) / (1000*60*60*24));
+  if (daysSince >= 7) {
+    showBackupReminder(`Backup ล่าสุดเมื่อ ${daysSince} วันที่แล้ว`);
+  }
+}
+
+function showBackupReminder(msg) {
+  const dismissed = sessionStorage.getItem('backupReminderDismissed');
+  if (dismissed) return;
+  setTimeout(() => {
+    if (confirm(`💾 เตือน Backup\n\n${msg}\n\nต้องการ Backup เลยไหม?`)) {
+      downloadBackup();
+    }
+    sessionStorage.setItem('backupReminderDismissed', '1');
+  }, 3000);
+}
+
+// ============ SPOT ============
+function updateSpot() {
+  spot = parseFloat(document.getElementById('spotInput').value) || 72230;
+  if (window._fbReady) {
+    window._fb.saveDoc('settings', 'spot', {
+      value: spot,
+      updatedAt: new Date().toISOString(),
+      source: 'manual'
+    });
+  }
+  renderDashboard();
+}
+
+async function fetchSpot() {
+  const btn = document.querySelector('.spot-refresh');
+  const status = document.getElementById('spotStatus');
+  btn.textContent = '...';
+  status.textContent = 'กำลังดึงราคา...';
+  try {
+    const r = await fetch(GOLD_PRICE_API_URL, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+    const data = await r.json();
+    if (data && data.ok && data.sell) {
+      const val = Number(data.sell);
+      spot = val;
+      document.getElementById('spotInput').value = val;
+      if (window._fbReady) {
+        await window._fb.saveDoc('settings', 'spot', {
+          value: val,
+          buy: data.buy || 0,
+          sell: data.sell || val,
+          dateText: data.dateText || '',
+          timeText: data.timeText || '',
+          source: data.source || GOLD_PRICE_API_URL,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      status.textContent = '✓ อัปเดต ' + (data.dateText || '') + ' ' + (data.timeText || '');
+      renderDashboard(); btn.textContent='↻'; return;
+    }
+    throw new Error('gold api fail');
+  } catch(e) {
+    status.textContent = '⚠ ดึงราคาไม่ได้ — กรุณาป้อนเอง';
+    document.getElementById('spotInput').focus();
+    document.getElementById('spotInput').select();
+  }
+  btn.textContent = '↻';
+}
+
+// ============ PRICE CALC ============
+// 1 บาทไทย = 15.244 กรัม; weightUnit = สลึง-units (4 = 1 บาท), or string 'gN' for grams
+function weightInBahtUnits(w) {
+  if (typeof w === 'string' && w.startsWith('g')) {
+    const grams = parseFloat(w.slice(1));
+    return (grams / 15.244) * 4; // convert to baht-unit scale
+  }
+  return parseFloat(w);
+}
+function goldCost(w) { return spot * 0.965 * (weightInBahtUnits(w) / 4); }
+function sellPrice(cost, fee) { return Math.ceil((cost + fee) / 50) * 50; }
+function buyBackPrice(w, spread) { return Math.floor((goldCost(w) - spread) / 50) * 50; }
+
+// ============ DASHBOARD ============
+function renderDashboard() {
+  const d = new Date();
+  document.getElementById('todayDate').textContent = d.toLocaleDateString('th-TH', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  
+  const todaySales = getReportRows().filter(t => isSameLocalDay(t.date, d));
+  const todayRevenue = todaySales.reduce((s,t) => s+t.revenue, 0);
+  const todayProfit = todaySales.reduce((s,t) => s+t.profit, 0);
+
+  const totalStock = products.reduce((s,p) => s + p.lots.reduce((a,l)=>a+l.qty,0), 0);
+  const totalValue = products.reduce((s,p) => s + p.lots.reduce((a,l)=>a+l.cost*l.qty,0), 0);
+
+  document.getElementById('dashMetrics').innerHTML = `
+    <div class="metric gold"><div class="metric-label">Spot วันนี้</div><div class="metric-value">${spot.toLocaleString()}</div><div class="metric-sub">บาท/บาท</div></div>
+    <div class="metric"><div class="metric-label">รายได้ (วันนี้)</div><div class="metric-value">${todayRevenue.toLocaleString()}</div><div class="metric-sub">${todaySales.length} รายการ</div></div>
+    <div class="metric green"><div class="metric-label">กำไร (วันนี้)</div><div class="metric-value">${todayProfit.toLocaleString()}</div><div class="metric-sub">บาท</div></div>
+    <div class="metric"><div class="metric-label">ชิ้นในสต็อก</div><div class="metric-value">${totalStock}</div><div class="metric-sub">ชิ้น</div></div>
+    <div class="metric"><div class="metric-label">มูลค่าสต็อก</div><div class="metric-value">${(totalValue/1000).toFixed(0)}K</div><div class="metric-sub">บาท</div></div>
+  `;
+
+  // Low stock
+  const low = products.filter(p => p.lots.reduce((a,l)=>a+l.qty,0) <= 2);
+  document.getElementById('lowStock').innerHTML = low.length ? low.map(p=>`
+    <div class="tx-row">
+      <div style="flex:1;">
+        <div class="tx-name">${p.name}</div>
+        <div class="tx-date mono">${p.code} · ${p.tray||'—'}</div>
+      </div>
+      <span class="chip chip-red">${p.lots.reduce((a,l)=>a+l.qty,0)} ชิ้น</span>
+    </div>`).join('') : '<div class="empty"><div class="empty-text">สต็อกปกติทุกรายการ ✓</div></div>';
+
+  // Top sales today
+  const saleMap = {};
+  todaySales.filter(t => t.type === 'sale' || t.type === 'sell').forEach(t => { saleMap[t.productName] = (saleMap[t.productName]||0)+t.qty; });
+  const top = Object.entries(saleMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('topSales').innerHTML = top.length ? top.map(([name,qty],i)=>`
+    <div class="tx-row">
+      <div style="width:20px;text-align:center;color:var(--text3);font-size:12px;">${i+1}</div>
+      <div style="flex:1;font-size:14px;">${name}</div>
+      <span class="chip chip-green">${qty} ชิ้น</span>
+    </div>`).join('') : '<div class="empty"><div class="empty-text">ยังไม่มียอดขายวันนี้</div></div>';
+
+  // Pawn alerts
+  renderPawnAlerts();
+}
+
+function calcPawnDaysLeft(pawn) {
+  if (!pawn.dueDate) return null;
+  const due = new Date(pawn.dueDate);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  due.setHours(0,0,0,0);
+  return Math.ceil((due - today) / (1000*60*60*24));
+}
+
+function renderPawnAlerts() {
+  const el = document.getElementById('pawnAlerts');
+  if (!el) return;
+
+  const activePawns = (pawns || []).filter(p => !['closed','redeemed','forfeited','deleted'].includes(p.status));
+  const alerts = activePawns
+    .map(p => ({ ...p, daysLeft: calcPawnDaysLeft(p) }))
+    .filter(p => p.daysLeft !== null && p.daysLeft <= 7)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+
+  if (alerts.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-text">✓ ไม่มีตั๋วที่ใกล้ครบกำหนดใน 7 วัน</div></div>';
+    return;
+  }
+
+  el.innerHTML = alerts.map(p => {
+    let badgeClass = 'chip-amber', badgeText = `อีก ${p.daysLeft} วัน`;
+    if (p.daysLeft < 0) { badgeClass = 'chip-red'; badgeText = `เกิน ${-p.daysLeft} วัน`; }
+    else if (p.daysLeft === 0) { badgeClass = 'chip-red'; badgeText = 'ครบวันนี้'; }
+    else if (p.daysLeft <= 3) { badgeClass = 'chip-red'; }
+
+    const phone = p.customerPhone || p.phone || '';
+    const item = p.item || p.itemDescription || '-';
+    const amount = (p.amount || 0).toLocaleString();
+    const id = getPawnKey(p);
+    const redeemTotal = calcPawnRedeemTotal(p);
+
+    return `
+      <div class="tx-row" style="cursor:pointer;" onclick="showPawnReminderActions('${id}')">
+        <div style="flex:1;">
+          <div class="tx-name">${p.customerName || p.customer || 'ไม่ระบุชื่อ'} · ${item}</div>
+          <div class="tx-date mono">${id} · เงินต้น ฿${amount} · ไถ่ถอน ฿${redeemTotal.toLocaleString()} · ${phone || 'ไม่มีเบอร์'}</div>
+        </div>
+        <span class="chip ${badgeClass}">${badgeText}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function showPawnReminderActions(id) {
+  const p = pawns.find(x => getPawnKey(x) === id);
+  if (!p) return;
+
+  const phone = (p.customerPhone || p.phone || '').replace(/\D/g, '');
+  const daysLeft = calcPawnDaysLeft(p);
+  const item = p.item || p.itemDescription || '-';
+  const dueText = formatDateTH(p.dueDate);
+  const redeemTotal = calcPawnRedeemTotal(p);
+
+  let msg = '';
+  if (daysLeft < 0) {
+    msg = `เรียน คุณ${p.customerName || p.customer || 'ลูกค้า'}\n\n` +
+          `ตั๋วจำนำของท่าน (เลขที่ ${getPawnKey(p)}) เกินกำหนดมาแล้ว ${-daysLeft} วัน\n` +
+          `รายการ: ${item}\nยอด: ${(p.amount || 0).toLocaleString()} บาท\n\n` +
+          `ยอดที่ต้องชำระเพื่อไถ่ถอน: ${redeemTotal.toLocaleString()} บาท\n` +
+          `ครบกำหนด: ${dueText}\n\n` +
+          `กรุณาติดต่อร้านโดยด่วน — ${getShopSettings().name}\n` +
+          `โทร: ${getShopSettings().phone || ''}`;
+  } else {
+    msg = `เรียน คุณ${p.customerName || p.customer || 'ลูกค้า'}\n\n` +
+          `ตั๋วจำนำของท่าน (เลขที่ ${getPawnKey(p)}) จะครบกำหนดใน ${daysLeft} วัน\n` +
+          `รายการ: ${item}\nยอด: ${(p.amount || 0).toLocaleString()} บาท\n` +
+          `ครบกำหนด: ${dueText}\n` +
+          `ยอดที่ต้องชำระเพื่อไถ่ถอน: ${redeemTotal.toLocaleString()} บาท\n\n` +
+          `กรุณาติดต่อร้านเพื่อต่อดอกหรือไถ่ถอน — ${getShopSettings().name}\n` +
+          `โทร: ${getShopSettings().phone || ''}`;
+  }
+
+  // Modal สำหรับเลือก action
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:14px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow:auto;">
+      <h3 style="margin-bottom:14px;">📨 ส่งข้อความเตือนลูกค้า</h3>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">
+        คุณ${p.customerName || p.customer || '-'} · ตั๋ว ${getPawnKey(p)} · ยอดไถ่ถอน ${redeemTotal.toLocaleString()} บาท
+      </p>
+
+      <textarea id="reminderMsg" rows="8" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:13px;line-height:1.5;margin-bottom:14px;">${msg}</textarea>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        ${phone ? `<a href="sms:${phone}?body=${encodeURIComponent(msg)}" class="btn btn-primary" style="text-align:center;text-decoration:none;">📱 ส่ง SMS</a>` : '<div></div>'}
+        ${phone ? `<a href="tel:${phone}" class="btn" style="text-align:center;text-decoration:none;">📞 โทรหาลูกค้า</a>` : '<div></div>'}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <button class="btn" onclick="copyReminderMsg()">📋 Copy ข้อความ</button>
+        <a href="https://line.me/R/share?text=${encodeURIComponent(msg)}" target="_blank" class="btn" style="background:#06C755;color:white;text-align:center;text-decoration:none;">📨 ส่งทาง LINE</a>
+      </div>
+
+      <button class="btn" onclick="this.closest('.modal-overlay').remove()" style="width:100%;margin-top:10px;">ปิด</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function copyReminderMsg() {
+  const text = document.getElementById('reminderMsg').value;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('✅ Copy ข้อความแล้ว — เปิด LINE/SMS แล้ววางได้เลย');
+  });
+}
+
+// ============ STOCK TABLE ============
+function getProductQty(p) { return p.lots.reduce((a,l)=>a+l.qty,0); }
+function getAvgCost(p) {
+  const totalUnits = p.lots.reduce((a,l)=>a+l.qty,0);
+  if (!totalUnits) return 0;
+  return p.lots.reduce((a,l)=>a+l.cost*l.qty,0) / totalUnits;
+}
+
+function renderStock() {
+  const search = document.getElementById('stockSearch').value.toLowerCase();
+  const filter = document.getElementById('stockFilter').value;
+  
+  const filtered = products.filter(p => {
+    const qty = getProductQty(p);
+    const matchSearch = !search || p.code.toLowerCase().includes(search) || p.name.toLowerCase().includes(search);
+    const matchFilter = !filter || p.type === filter;
+    return matchSearch && matchFilter;
+  });
+
+  const tbody = document.getElementById('stockTbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty"><div class="empty-icon">▦</div><div class="empty-text">ไม่มีสินค้าในสต็อก</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(p => {
+    const qty = getProductQty(p);
+    const avgCost = getAvgCost(p);
+    const fee = p.fee || 1000;
+    const sp = sellPrice(avgCost, fee);
+    const profit = sp - avgCost - fee;
+    const totalVal = avgCost * qty;
+    const type = p.type || 'SC';
+    return `<tr>
+      <td><span class="mono">${p.code}</span></td>
+      <td>
+        <div style="font-weight:500;">${p.name}</div>
+        <div class="fifo-info">${p.lots.length} ล็อต · ${WEIGHT_LABELS[p.weight]||p.weight}</div>
+      </td>
+      <td><span style="font-size:12px;color:var(--text3);">${p.tray||'—'}</span></td>
+      <td>${WEIGHT_LABELS[p.weight]||p.weight}</td>
+      <td class="num">${Math.round(avgCost).toLocaleString()}</td>
+      <td class="num">${sp.toLocaleString()}</td>
+      <td class="num ${profit>0?'text-green':'text-red'}">${Math.round(profit).toLocaleString()}</td>
+      <td class="num"><strong ${qty<=2?'style="color:var(--red)"':''}>${qty}</strong></td>
+      <td class="num">${Math.round(totalVal).toLocaleString()}</td>
+      <td style="white-space:nowrap;">
+        ${can('editProduct') ? `<button class="btn btn-ghost btn-sm" onclick="editProduct('${p.code}')">แก้ไข</button>` : ''}
+        ${can('addLot') ? `<button class="btn btn-ghost btn-sm" onclick="addLot('${p.code}')">+ ล็อต</button>` : ''}
+        ${can('editLot') ? `<button class="btn btn-ghost btn-sm" onclick="showLots('${p.code}')">ล็อต</button>` : ''}
+        ${can('deleteProduct') ? `<button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.code}')">ลบ</button>` : ''}
+        ${!can('editProduct') && !can('addLot') && !can('editLot') && !can('deleteProduct') ? '<span style="font-size:11px;color:var(--text3);">ดูอย่างเดียว</span>' : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteProduct(code) {
+  if (!requirePerm('deleteProduct', 'ไม่มีสิทธิ์ลบสินค้า')) return;
+  if (!confirm('ลบสินค้า '+code+' ออกจากสต็อก?')) return;
+  if (window._fbReady) window._fb.deleteDoc('products', code);
+  products = products.filter(p => p.code !== code);
+  save(); renderStock(); renderDashboard();
+}
+
+// ============ TRAYS ============
+function renderTrays() {
+  function renderTrayGrid(containerId, trays, maxPerTray) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = trays.map(tray => {
+      const inTray = products.filter(p => p.tray === tray);
+      const count = inTray.reduce((a,p)=>a+getProductQty(p),0);
+      const pct = Math.min(100, (count/maxPerTray)*100);
+      const items = inTray.slice(0,3).map(p=>`<div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name} (${getProductQty(p)})</div>`).join('');
+      return `<div class="tray-card">
+        <div class="tray-label">${tray}</div>
+        <div class="tray-count">${count}</div>
+        <div class="tray-value">/ ${maxPerTray} ชิ้น</div>
+        ${items}
+        <div class="tray-bar"><div class="tray-bar-fill" style="width:${pct}%;background:${pct>90?'var(--red)':pct>60?'var(--gold)':'var(--green)'}"></div></div>
+      </div>`;
+    }).join('');
+  }
+  renderTrayGrid('trayGridSC', TRAYS_SC, 5);
+  renderTrayGrid('trayGridFront', TRAYS_FRONT, 10);
+}
+
+// ============ ADD PRODUCT MODAL ============
+function openAddModal() {
+  if (!requirePerm('addProduct', 'ไม่มีสิทธิ์เพิ่มสินค้า')) return;
+  document.getElementById('addModalTitle').textContent = 'เพิ่มสินค้าเข้าสต็อก';
+  document.getElementById('addEditCode').value = '';
+  document.getElementById('addOriginalCode').value = '';
+  document.getElementById('addSaveBtn').textContent = 'บันทึกเข้าสต็อก';
+  document.getElementById('addQty').disabled = false;
+  document.getElementById('addCode').value = '';
+  document.getElementById('addName').value = '';
+  document.getElementById('addCost').value = Math.round(goldCost('g0.3'));
+  document.getElementById('addFee').value = 1000;
+  document.getElementById('addQty').value = 1;
+  calcAddPrice();
+  autoCode();
+  document.getElementById('addModal').classList.add('open');
+}
+
+function editProduct(code) {
+  if (!requirePerm('editProduct', 'ไม่มีสิทธิ์แก้ไขสินค้า')) return;
+  const p = products.find(x => x.code === code);
+  if (!p) return;
+  document.getElementById('addModalTitle').textContent = 'แก้ไขสินค้า';
+  document.getElementById('addEditCode').value = code;
+  document.getElementById('addOriginalCode').value = code;
+  document.getElementById('addSaveBtn').textContent = 'บันทึกการแก้ไข';
+  document.getElementById('addType').value = p.type || 'SC';
+  document.getElementById('addCode').value = p.code || '';
+  document.getElementById('addName').value = p.name || '';
+  document.getElementById('addWeight').value = String(p.weight ?? '4');
+  document.getElementById('addTray').value = p.tray || '';
+  document.getElementById('addCost').value = Math.round(getAvgCost(p) || goldCost(p.weight || 4));
+  document.getElementById('addFee').value = p.fee ?? 1000;
+  document.getElementById('addQty').value = getProductQty(p);
+  document.getElementById('addQty').disabled = true;
+  document.getElementById('addSource').value = 'ซัพพลายเออร์';
+  calcAddPrice();
+  document.getElementById('addModal').classList.add('open');
+}
+
+function autoCode() {
+  const type = document.getElementById('addType').value;
+  const existing = products.filter(p=>p.type===type).length;
+  const num = String(existing+1).padStart(3,'0');
+  document.getElementById('addCode').value = type+'-'+num;
+}
+
+function calcAddPrice() {
+  const w = document.getElementById('addWeight').value;
+  const wVal = isNaN(w) ? w : parseFloat(w);
+  const cost = parseFloat(document.getElementById('addCost').value) || goldCost(wVal);
+  const fee = parseFloat(document.getElementById('addFee').value) || 1000;
+  const qty = parseInt(document.getElementById('addQty').value) || 1;
+  const sp = sellPrice(cost, fee);
+  const profit = sp - cost - fee;
+  document.getElementById('addPreview').innerHTML = `
+    <div class="row"><span>ต้นทุนทอง</span><span>${Math.round(cost).toLocaleString()} บาท</span></div>
+    <div class="row"><span>ค่ากำเหน็จ</span><span>${fee.toLocaleString()} บาท</span></div>
+    <div class="row"><span>กำไรต่อชิ้น</span><span style="color:var(--green);">${Math.round(profit).toLocaleString()} บาท</span></div>
+    <div class="row total"><span>ราคาขาย</span><span>${sp.toLocaleString()} บาท</span></div>
+    <div class="row"><span style="font-size:11px;color:var(--amber);">ต้นทุนรวม ${qty} ชิ้น</span><span style="font-size:11px;color:var(--amber);">${(cost*qty).toLocaleString()} บาท</span></div>
+  `;
+}
+
+function addProduct() {
+  const editCode = document.getElementById('addEditCode').value;
+  const originalCode = document.getElementById('addOriginalCode').value || editCode;
+  const code = document.getElementById('addCode').value.trim();
+  const name = document.getElementById('addName').value.trim();
+  const type = document.getElementById('addType').value;
+  const weightRaw = document.getElementById('addWeight').value;
+  const weight = isNaN(weightRaw) ? weightRaw : parseFloat(weightRaw);
+  const tray = document.getElementById('addTray').value.trim();
+  const cost = parseFloat(document.getElementById('addCost').value);
+  const fee = parseFloat(document.getElementById('addFee').value);
+  const qty = parseInt(document.getElementById('addQty').value);
+  const source = document.getElementById('addSource').value;
+  if (!code||!name||!cost) { alert('กรุณากรอกข้อมูลให้ครบค่ะ'); return; }
+
+  if (editCode) {
+    const p = products.find(x => x.code === originalCode);
+    if (!p) return;
+    if (code !== originalCode && products.some(x => x.code === code)) {
+      alert('รหัสสินค้านี้ถูกใช้แล้ว');
+      return;
+    }
+    Object.assign(p, { code, name, type, weight, tray, fee });
+    transactions.forEach(t => {
+      if (t.productCode === originalCode) t.productCode = code;
+      if (t.productName && originalCode === editCode && t.productCode === code) t.productName = name;
+    });
+    if (window._fbReady && code !== originalCode) window._fb.deleteDoc('products', originalCode);
+    save(); closeModal('addModal'); renderStock(); renderDashboard(); renderBarcodeList();
+    showToast('บันทึกการแก้ไขสินค้าแล้ว', 'success');
+    return;
+  }
+  
+  const existing = products.find(p=>p.code===code);
+  const lot = { cost, qty, date: new Date().toISOString(), source };
+  if (existing) {
+    existing.lots.push(lot);
+    existing.fee = fee;
+    existing.tray = tray || existing.tray;
+  } else {
+    products.push({ code, name, type, weight, tray, fee, lots:[lot] });
+  }
+  transactions.push({ type:'buy', productCode:code, productName:name, cost, qty, total:cost*qty, date:new Date().toISOString(), source });
+  save(); closeModal('addModal'); renderStock(); renderDashboard();
+}
+
+// ============ BUY MODAL ============
+function openBuyModal() {
+  calcBuyPrice();
+  document.getElementById('buyModal').classList.add('open');
+}
+
+function calcBuyPrice() {
+  const wRaw = document.getElementById('buyWeight').value;
+  const w = isNaN(wRaw) ? wRaw : parseFloat(wRaw)||4;
+  const spread = parseFloat(document.getElementById('buySpread').value)||300;
+  const bp = buyBackPrice(w, spread);
+  const gc = goldCost(w);
+  document.getElementById('buyPrice').value = bp;
+  document.getElementById('buyPreview').innerHTML = `
+    <div class="row"><span>ต้นทุนทองตลาด</span><span>${Math.round(gc).toLocaleString()} บาท</span></div>
+    <div class="row"><span>หัก spread</span><span>- ${spread.toLocaleString()} บาท</span></div>
+    <div class="row total"><span>ราคารับซื้อ</span><span>${bp.toLocaleString()} บาท</span></div>
+  `;
+}
+
+function confirmBuy() {
+  if (!requirePerm('buy', 'ไม่มีสิทธิ์รับซื้อทอง')) return;
+  const name = document.getElementById('buyName').value.trim();
+  const customerId = document.getElementById('buyID').value.trim();
+  const customer = document.getElementById('buyCustomer').value.trim();
+  const price = parseFloat(document.getElementById('buyPrice').value);
+  const toStock = document.getElementById('buyToStock').value;
+  if (!name||!customerId) { showToast('กรุณากรอกชื่อสินค้าและเลขบัตรประชาชน', 'error'); return; }
+  
+  const wRaw = document.getElementById('buyWeight').value;
+  const w = isNaN(wRaw) ? wRaw : parseFloat(wRaw);
+  const fee = parseFloat(document.getElementById('buyFee').value)||1000;
+  const txnNo = nextTxnNo();
+  
+  transactions.push({ type:'buy_from_customer', txnNo, productName:name, cost:price, qty:1, total:price, customer, customerId, date:new Date().toISOString() });
+  
+  if (toStock==='yes') {
+    const code = 'SC-'+ String(products.filter(p=>p.type==='SC').length+1).padStart(3,'0');
+    products.push({ code, name, type:'SC', weight:w, tray:'', fee, lots:[{ cost:price, qty:1, date:new Date().toISOString(), source:'รับซื้อจากลูกค้า: '+customer }] });
+  }
+  save(); closeModal('buyModal'); renderStock(); renderDashboard();
+  
+  // ใบเสร็จรับซื้อทองเก่า
+  showBuyReceipt({ txnNo, name, price, customer, customerId, weight: WEIGHT_LABELS[w]||w, toStock });
+}
+
+// ============ SALE ============
+function searchForSale() {
+  const q = document.getElementById('saleSearch').value.toLowerCase();
+  const results = document.getElementById('saleResults');
+  if (!q) { results.classList.remove('open'); return; }
+  
+  const matches = products.filter(p => {
+    const qty = getProductQty(p);
+    return qty > 0 && (p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
+  });
+  
+  if (!matches.length) { results.innerHTML = '<div class="search-item" style="color:var(--text3);">ไม่พบสินค้า</div>'; results.classList.add('open'); return; }
+  
+  results.innerHTML = matches.map(p => {
+    const qty = getProductQty(p);
+    const avgCost = getAvgCost(p);
+    const sp = sellPrice(avgCost, p.fee||1000);
+    return `<div class="search-item" onclick="selectSaleProduct('${p.code}')">
+      <div class="search-item-name">${p.name} <span style="font-size:11px;background:var(--surface2);padding:1px 6px;border-radius:4px;">${qty} ชิ้น</span></div>
+      <div class="search-item-meta">${p.code} · ${WEIGHT_LABELS[p.weight]||''} · ขาย ${sp.toLocaleString()} บาท</div>
+    </div>`;
+  }).join('');
+  results.classList.add('open');
+}
+
+function selectSaleProduct(code) {
+  selectedSaleProduct = products.find(p=>p.code===code);
+  document.getElementById('saleSearch').value = selectedSaleProduct.name + ' (' + selectedSaleProduct.code + ')';
+  document.getElementById('saleResults').classList.remove('open');
+  document.getElementById('saleQty').value = 1;
+  document.getElementById('saleDiscount').value = 0;
+  document.getElementById('selectedItem').style.display = 'block';
+  updateSalePreview();
+}
+
+function updateSalePreview() {
+  if (!selectedSaleProduct) return;
+  const p = selectedSaleProduct;
+  const qty = parseInt(document.getElementById('saleQty').value)||1;
+  const discount = parseFloat(document.getElementById('saleDiscount').value)||0;
+  const availQty = getProductQty(p);
+  if (qty > availQty) { document.getElementById('saleQty').value = availQty; return; }
+  
+  const avgCost = getAvgCost(p);
+  const sp = sellPrice(avgCost, p.fee||1000);
+  const total = sp * qty - discount;
+  const profit = total - avgCost*qty - (p.fee||1000)*qty;
+  
+  // FIFO — show which lot will be cut
+  let remaining = qty;
+  const lotsToUse = [];
+  for (const lot of p.lots) {
+    if (remaining <= 0) break;
+    const use = Math.min(lot.qty, remaining);
+    lotsToUse.push({ cost: lot.cost, qty: use, date: lot.date });
+    remaining -= use;
+  }
+  const fifoInfo = lotsToUse.map(l=>`ล็อต ${new Date(l.date).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'})} ต้นทุน ${Math.round(l.cost).toLocaleString()} × ${l.qty}`).join(', ');
+  
+  document.getElementById('salePreview').innerHTML = `
+    <div class="row"><span>ราคาขาย/ชิ้น</span><span>${sp.toLocaleString()} บาท</span></div>
+    <div class="row"><span>จำนวน</span><span>${qty} ชิ้น</span></div>
+    ${discount?`<div class="row"><span>ส่วนลด</span><span>- ${discount.toLocaleString()} บาท</span></div>`:''}
+    <div class="row total"><span>รวมรับเงิน</span><span>${total.toLocaleString()} บาท</span></div>
+    <div class="row"><span style="color:var(--green);font-size:12px;">กำไร</span><span style="color:var(--green);font-size:12px;">${Math.round(profit).toLocaleString()} บาท</span></div>
+    <div style="margin-top:8px;font-size:11px;color:var(--amber);border-top:1px solid rgba(139,94,10,0.15);padding-top:8px;">FIFO ตัดสต็อก: ${fifoInfo}</div>
+  `;
+}
+
+function confirmSale() {
+  if (!requirePerm('sell', 'ไม่มีสิทธิ์บันทึกขาย')) return;
+  if (!selectedSaleProduct) return;
+  const p = selectedSaleProduct;
+  const qty = parseInt(document.getElementById('saleQty').value)||1;
+  const discount = parseFloat(document.getElementById('saleDiscount').value)||0;
+  const channel = document.getElementById('saleChannel').value;
+  const customer = document.getElementById('saleCustomer').value.trim();
+  const customerPhone = document.getElementById('salePhone').value.trim();
+  const availQty = getProductQty(p);
+  if (qty > availQty) { alert('สต็อกไม่พอค่ะ มีแค่ '+availQty+' ชิ้น'); return; }
+  
+  // FIFO deduction
+  let remaining = qty;
+  const avgCost = getAvgCost(p);
+  for (let i=0; i<p.lots.length && remaining>0; i++) {
+    const use = Math.min(p.lots[i].qty, remaining);
+    p.lots[i].qty -= use;
+    remaining -= use;
+  }
+  p.lots = p.lots.filter(l=>l.qty>0);
+  
+  const sp = sellPrice(avgCost, p.fee||1000);
+  const total = sp*qty - discount;
+  const profit = total - avgCost*qty - (p.fee||1000)*qty;
+  const txnNo = nextTxnNo();
+  const customerRecord = customer || customerPhone ? upsertCustomerRecord(customer, customerPhone) : null;
+  
+  transactions.push({
+    type:'sale',
+    txnNo,
+    productCode:p.code,
+    productName:p.name,
+    qty,
+    cost:avgCost,
+    total,
+    profit,
+    discount,
+    channel,
+    customer,
+    customerName: customer,
+    customerPhone,
+    customerId: customerRecord?.id || '',
+    date:new Date().toISOString()
+  });
+  
+  // Add to CRM
+  addCustomerTransaction(customer, 'sale', p.name, total);
+
+  save(); cancelSale(); renderDashboard();
+  
+  // Show receipt
+  showReceipt({ type:'sale', txnNo, productName:p.name, qty, sp, discount, total, profit, channel, customer });
+}
+
+function cancelSale() {
+  selectedSaleProduct = null;
+  document.getElementById('saleSearch').value = '';
+  document.getElementById('saleCustomer').value = '';
+  document.getElementById('salePhone').value = '';
+  document.getElementById('selectedItem').style.display = 'none';
+  document.getElementById('saleResults').classList.remove('open');
+}
+
+// ============ HISTORY ============
+function filterHistory(f, el) {
+  historyFilter = f;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = [...transactions].reverse();
+  const filtered = list.filter(t => historyFilter==='all' || t.type===historyFilter || (historyFilter==='buy' && t.type==='buy_from_customer'));
+  const el = document.getElementById('historyList');
+  if (!filtered.length) { el.innerHTML = '<div class="empty"><div class="empty-text">ยังไม่มีรายการ</div></div>'; return; }
+  el.innerHTML = filtered.slice(0,80).map(t => {
+    const txnKey = t.id || t.txnNo || encodeURIComponent(t.date || '');
+    const isSale = t.type==='sale';
+    const icon = isSale ? '⬆' : '⬇';
+    const label = isSale ? 'ขาย' : (t.type==='buy_from_customer' ? 'รับซื้อ' : 'รับเข้า');
+    const amount = t.total;
+    const d = new Date(t.date);
+    const ds = d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return `<div class="tx-row">
+      <div class="tx-icon ${isSale?'sale':'buy'}">${icon}</div>
+      <div class="tx-meta">
+        <div class="tx-name">${t.productName||''} ${t.qty>1?'× '+t.qty:''} ${t.txnNo?`<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:4px;color:var(--text3);">${t.txnNo}</span>`:''}</div>
+        <div class="tx-date">${label} · ${ds}${t.customer?' · '+t.customer:''}${t.channel?' · '+t.channel:''}</div>
+      </div>
+      <div class="tx-amount ${isSale?'sale':'buy'}">${isSale?'+':'-'}${amount.toLocaleString()}</div>
+      ${can('editTransaction') ? `<button class="btn btn-ghost btn-sm" onclick="editTransaction('${txnKey}')" style="margin-left:8px;">แก้ไข</button>` : ''}
+      ${can('editTransaction') ? `<button class="btn btn-danger btn-sm" onclick="deleteTransaction('${txnKey}')" style="margin-left:8px;">ลบ</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function isoToDatetimeLocal(value) {
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return '';
+  const offset = d.getTimezoneOffset();
+  return new Date(d.getTime() - offset * 60000).toISOString().slice(0,16);
+}
+
+function datetimeLocalToIso(value) {
+  return value ? new Date(value).toISOString() : new Date().toISOString();
+}
+
+function editTransaction(key) {
+  if (!requirePerm('editTransaction', 'ไม่มีสิทธิ์แก้ไขประวัติรายการ')) return;
+  const t = transactions.find(x => String(x.id || x.txnNo || encodeURIComponent(x.date || '')) === String(key));
+  if (!t) return;
+  document.getElementById('txnEditKey').value = key;
+  document.getElementById('txnNo').value = t.txnNo || t.id || '';
+  document.getElementById('txnType').value = t.type || 'sale';
+  document.getElementById('txnProductName').value = t.productName || '';
+  document.getElementById('txnQty').value = t.qty || 1;
+  document.getElementById('txnCost').value = t.cost || t.amount || 0;
+  document.getElementById('txnTotal').value = t.total || 0;
+  document.getElementById('txnProfit').value = t.profit || t.interest || 0;
+  document.getElementById('txnDiscount').value = t.discount || 0;
+  document.getElementById('txnChannel').value = t.channel || '';
+  document.getElementById('txnCustomer').value = t.customerName || t.customer || '';
+  document.getElementById('txnDate').value = isoToDatetimeLocal(t.date);
+  document.getElementById('txnModal').classList.add('open');
+}
+
+function saveTransactionEdit() {
+  const key = document.getElementById('txnEditKey').value;
+  const t = transactions.find(x => String(x.id || x.txnNo || encodeURIComponent(x.date || '')) === String(key));
+  if (!t) return;
+  const qty = parseInt(document.getElementById('txnQty').value) || 1;
+  const cost = parseFloat(document.getElementById('txnCost').value) || 0;
+  const total = parseFloat(document.getElementById('txnTotal').value) || 0;
+  const profit = parseFloat(document.getElementById('txnProfit').value) || 0;
+  const customer = document.getElementById('txnCustomer').value.trim();
+  Object.assign(t, {
+    txnNo: document.getElementById('txnNo').value.trim() || t.txnNo,
+    type: document.getElementById('txnType').value,
+    productName: document.getElementById('txnProductName').value.trim(),
+    qty,
+    cost,
+    amount: cost,
+    total,
+    profit,
+    interest: document.getElementById('txnType').value === 'pawn_redeem' ? profit : t.interest,
+    discount: parseFloat(document.getElementById('txnDiscount').value) || 0,
+    channel: document.getElementById('txnChannel').value.trim(),
+    customer,
+    customerName: customer,
+    date: datetimeLocalToIso(document.getElementById('txnDate').value),
+    updatedAt: new Date().toISOString()
+  });
+  save(); closeModal('txnModal'); renderHistory(); renderDashboard();
+  if (reportMode === 'daily') renderDailyReport(); else renderMonthlyReport();
+  showToast('บันทึกการแก้ไขรายการแล้ว', 'success');
+}
+
+function deleteTransaction(key) {
+  if (!requirePerm('editTransaction', 'ไม่มีสิทธิ์ลบประวัติรายการ')) return;
+  const idx = transactions.findIndex(t => String(t.id || t.txnNo || encodeURIComponent(t.date || '')) === String(key));
+  if (idx < 0) return;
+  const t = transactions[idx];
+  if (!confirm(`ลบรายการ ${t.txnNo || t.productName || ''}?\nยอด ${Number(t.total || 0).toLocaleString()} บาท`)) return;
+
+  if (t.type === 'sale' && t.productCode) {
+    const p = products.find(x => x.code === t.productCode);
+    if (p) {
+      if (!Array.isArray(p.lots)) p.lots = [];
+      p.lots.push({
+        cost: Number(t.cost || 0),
+        qty: Number(t.qty || 1),
+        date: new Date().toISOString(),
+        source: 'คืนสต็อกจากการลบรายการขาย ' + (t.txnNo || '')
+      });
+    }
+  }
+  if (window._fbReady) {
+    const docId = t._docId || t.id || t.txnNo;
+    if (docId) window._fb.deleteDoc('transactions', docId);
+  }
+  transactions.splice(idx, 1);
+  save(); renderHistory(); renderDashboard();
+}
+
+// ============ ADD LOT ============
+function addLot(code) {
+  if (!requirePerm('addLot', 'ไม่มีสิทธิ์เพิ่มล็อตสินค้า')) return;
+  const p = products.find(x=>x.code===code);
+  if (!p) return;
+  openLotModal(code);
+}
+
+function isoToDateInput(value) {
+  if (!value) return new Date().toISOString().slice(0,10);
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0,10);
+  return d.toISOString().slice(0,10);
+}
+
+function dateInputToIso(value) {
+  return value ? new Date(value + 'T00:00:00').toISOString() : new Date().toISOString();
+}
+
+function openLotModal(code, index='') {
+  const p = products.find(x=>x.code===code);
+  if (!p) return;
+  const lot = index === '' ? null : p.lots[Number(index)];
+  document.getElementById('lotModalTitle').textContent = lot ? 'แก้ไขล็อตสินค้า' : 'เพิ่มล็อตสินค้า';
+  document.getElementById('lotProductCode').value = code;
+  document.getElementById('lotIndex').value = index;
+  document.getElementById('lotProductName').value = `${p.name} (${p.code})`;
+  document.getElementById('lotCost').value = lot ? lot.cost : Math.round(getAvgCost(p) || goldCost(p.weight || 4));
+  document.getElementById('lotQty').value = lot ? lot.qty : 1;
+  document.getElementById('lotDate').value = isoToDateInput(lot?.date);
+  document.getElementById('lotSource').value = lot ? (lot.source || '') : 'เพิ่มล็อต';
+  document.getElementById('lotModal').classList.add('open');
+}
+
+function showLots(code) {
+  if (!requirePerm('editLot', 'ไม่มีสิทธิ์แก้ไขล็อตสินค้า')) return;
+  const p = products.find(x=>x.code===code);
+  if (!p) return;
+  const rows = (p.lots || []).map((lot, i) => {
+    const d = new Date(lot.date || Date.now()).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return `${i+1}. ${Math.round(lot.cost||0).toLocaleString()} บาท × ${lot.qty||0} ชิ้น · ${d} · ${lot.source || '-'}`;
+  }).join('\n');
+  const choice = prompt(`ล็อตของ ${p.name}\n\n${rows || 'ยังไม่มีล็อต'}\n\nพิมพ์เลขล็อตที่ต้องการแก้ไข หรือเว้นว่างเพื่อเพิ่มล็อตใหม่`);
+  if (choice === null) return;
+  const index = choice.trim() ? Number(choice.trim()) - 1 : '';
+  if (index !== '' && (!p.lots[index])) { alert('ไม่พบล็อตที่เลือก'); return; }
+  openLotModal(code, index);
+}
+
+function saveLot() {
+  const code = document.getElementById('lotProductCode').value;
+  const p = products.find(x=>x.code===code);
+  if (!p) return;
+  const indexRaw = document.getElementById('lotIndex').value;
+  const cost = parseFloat(document.getElementById('lotCost').value);
+  const qty = parseInt(document.getElementById('lotQty').value);
+  const date = dateInputToIso(document.getElementById('lotDate').value);
+  const source = document.getElementById('lotSource').value.trim() || 'เพิ่มล็อต';
+  if (!cost || qty < 0 || Number.isNaN(qty)) { alert('กรุณากรอกต้นทุนและจำนวนให้ถูกต้อง'); return; }
+  if (!Array.isArray(p.lots)) p.lots = [];
+  if (indexRaw === '') {
+    p.lots.push({ cost, qty, date, source });
+    transactions.push({ type:'buy', productCode:code, productName:p.name, cost, qty, total:cost*qty, date:new Date().toISOString(), source });
+  } else {
+    p.lots[Number(indexRaw)] = { ...(p.lots[Number(indexRaw)] || {}), cost, qty, date, source };
+  }
+  save(); closeModal('lotModal'); renderStock(); renderDashboard(); renderBarcodeList();
+  showToast('บันทึกล็อตแล้ว', 'success');
+}
+
+// ============ MODAL HELPERS ============
+function openBuyModal() { if (!requirePerm('buy', 'ไม่มีสิทธิ์รับซื้อทอง')) return; calcBuyPrice(); document.getElementById('buyModal').classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); }));
+
+// ============ BARCODE SCANNER ============
+let barcodeBuffer = '';
+let barcodeTimer = null;
+
+function onBarcodeInput() {
+  const val = document.getElementById('barcodeInput').value.trim().toUpperCase();
+  if (!val) return;
+  // Try direct code match
+  const found = products.find(p => p.code.toUpperCase() === val && p.lots.reduce((a,l)=>a+l.qty,0) > 0);
+  if (found) {
+    selectSaleProduct(found.code);
+    document.getElementById('barcodeInput').value = '';
+    document.getElementById('saleSearch').value = '';
+  }
+}
+
+function onBarcodeKey(e) {
+  if (e.key === 'Enter') {
+    onBarcodeInput();
+  }
+}
+
+// ============ BARCODE RENDER ============
+function renderBarcodeList() {
+  const search = (document.getElementById('bcSearch').value||'').toLowerCase();
+  const filter = document.getElementById('bcFilter').value;
+  const list = products.filter(p => {
+    const q = p.lots.reduce((a,l)=>a+l.qty,0);
+    return q > 0 && (!filter || p.type===filter) && (!search || p.code.toLowerCase().includes(search) || p.name.toLowerCase().includes(search));
+  });
+  const el = document.getElementById('barcodeList');
+  if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-text">ไม่มีสินค้า</div></div>'; return; }
+  el.innerHTML = list.map(p => {
+    const avgCost = getAvgCost(p);
+    const sp = sellPrice(avgCost, p.fee||1000);
+    const bars = generateBarPattern(p.code);
+    return `<div class="bc-card">
+      <div class="bc-name">${p.name}</div>
+      <div class="bc-code">${p.code}</div>
+      <div class="bc-bars">${bars}</div>
+      <div class="bc-price">${sp.toLocaleString()} บาท</div>
+      <div class="bc-weight">${WEIGHT_LABELS[p.weight]||p.weight} · ${p.tray||'—'}</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px;width:100%;" onclick="printOneBc('${p.code}')">🖨 พิมพ์ label</button>
+    </div>`;
+  }).join('');
+}
+
+function generateBarPattern(code) {
+  // Simple visual bar pattern from code chars (decorative, not real barcode)
+  let html = '';
+  const chars = (code + '000000').slice(0,10);
+  for (let i=0; i<chars.length; i++) {
+    const n = chars.charCodeAt(i) % 7;
+    html += `<span class="${n>4?'wide':''}"></span>`;
+    if (i%2===1) html += `<span class="gap" style="width:2px;"></span>`;
+  }
+  return html;
+}
+
+function printAllBarcodes() {
+  document.getElementById('bcSearch').value = '';
+  document.getElementById('bcFilter').value = '';
+  renderBarcodeList();
+  setTimeout(()=>window.print(),200);
+}
+
+function printOneBc(code) {
+  document.getElementById('bcSearch').value = code;
+  document.getElementById('bcFilter').value = '';
+  renderBarcodeList();
+  setTimeout(()=>window.print(),200);
+}
+
+// ============ REPORT P&L ============
+let reportMode = 'daily';
+
+function parseDateInputLocal(value) {
+  if (!value) return new Date();
+  const [y, m, d] = value.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function isSameLocalDay(dateValue, target) {
+  const d = new Date(dateValue || 0);
+  return d.getFullYear() === target.getFullYear() &&
+    d.getMonth() === target.getMonth() &&
+    d.getDate() === target.getDate();
+}
+
+function getReportRows() {
+  return (transactions || []).map(t => {
+    if (!t || !t.date) return null;
+    const type = String(t.type || '').toLowerCase();
+    const qty = Number(t.qty || 1);
+    const revenue = Number(t.total || t.amount || 0);
+    const cost = Number(t.cost || 0) * qty;
+    const fee = Number(t.fee || 0) * qty;
+    const discount = Number(t.discount || 0);
+    let profit = Number(t.profit || 0);
+    let category = 'ขายทอง';
+
+    if (type === 'sale' || type === 'sell') {
+      if (!profit && revenue) profit = revenue - cost - fee;
+    } else if (type === 'pawn_redeem') {
+      category = 'ดอกเบี้ยจำนำ';
+      const principal = Number(t.amount || 0);
+      profit = Number(t.interest || t.profit || Math.max(0, revenue - principal));
+    } else if (type === 'savings_close') {
+      category = 'ปิดบัญชีออมทอง';
+      if (!profit && revenue) profit = revenue - cost - fee;
+    } else {
+      return null;
+    }
+
+    if (!revenue && !profit) return null;
+    return { ...t, type, qty, revenue, cost, fee, discount, profit, category };
+  }).filter(Boolean);
+}
+
+function switchReport(mode, el) {
+  reportMode = mode;
+  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('reportDaily').style.display = mode==='daily'?'block':'none';
+  document.getElementById('reportMonthly').style.display = mode==='monthly'?'block':'none';
+  if (mode==='daily') renderDailyReport();
+  else renderMonthlyReport();
+}
+
+function renderDailyReport() {
+  const dateInput = document.getElementById('reportDate').value;
+  const targetDate = parseDateInputLocal(dateInput);
+  
+  const sales = getReportRows().filter(t => isSameLocalDay(t.date, targetDate));
+  const revenue = sales.reduce((s,t)=>s+t.revenue,0);
+  const cost = sales.reduce((s,t)=>s+t.cost,0);
+  const fee = sales.reduce((s,t)=>s+t.fee,0);
+  const profit = sales.reduce((s,t)=>s+t.profit,0);
+  const margin = revenue > 0 ? ((profit/revenue)*100).toFixed(1) : '0.0';
+
+  document.getElementById('dailyMetrics').innerHTML = `
+    <div class="metric"><div class="metric-label">รายการรายได้</div><div class="metric-value">${sales.length}</div><div class="metric-sub">ขาย / ไถ่ถอน / ปิดออม</div></div>
+    <div class="metric"><div class="metric-label">รายรับรวม</div><div class="metric-value">${revenue.toLocaleString()}</div><div class="metric-sub">บาท</div></div>
+    <div class="metric"><div class="metric-label">ต้นทุนรวม</div><div class="metric-value">${Math.round(cost).toLocaleString()}</div><div class="metric-sub">บาท</div></div>
+    <div class="metric green"><div class="metric-label">กำไรสุทธิ</div><div class="metric-value">${Math.round(profit).toLocaleString()}</div><div class="metric-sub">บาท</div></div>
+    <div class="metric ${profit>=0?'green':''}"><div class="metric-label">Margin</div><div class="metric-value">${margin}%</div><div class="metric-sub">${profit>=0?'กำไร':'ขาดทุน'}</div></div>
+  `;
+
+  const tbody = document.getElementById('dailyTbody');
+  if (!sales.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty"><div class="empty-text">ไม่มีรายการรายได้วันนี้</div></div></td></tr>'; return; }
+  
+  let cumProfit = 0;
+  tbody.innerHTML = sales.map(t => {
+    const d = new Date(t.date);
+    const time = d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+    cumProfit += (t.profit||0);
+    const profitClass = (t.profit||0) >= 0 ? 'text-green' : 'text-red';
+    return `<tr>
+      <td class="mono">${time}</td>
+      <td><span class="mono" style="font-size:10px;color:var(--text3);">${t.txnNo || t.pawnNo || '—'}</span></td>
+      <td><div style="font-weight:500;">${t.productName||'—'}</div><div style="font-size:11px;color:var(--text3);">${t.category}${t.customer?` · ${t.customer}`:''}</div></td>
+      <td class="num">${t.qty}</td>
+      <td class="num">${Math.round(t.cost||0).toLocaleString()}</td>
+      <td class="num">${Math.round(t.revenue/(t.qty||1) + (t.discount||0)/(t.qty||1)).toLocaleString()}</td>
+      <td class="num text-red">${t.discount?t.discount.toLocaleString():'-'}</td>
+      <td class="num"><strong>${t.revenue.toLocaleString()}</strong></td>
+      <td class="num ${profitClass}"><strong>${Math.round(t.profit||0).toLocaleString()}</strong></td>
+      <td><span style="font-size:11px;background:var(--surface2);padding:2px 6px;border-radius:4px;">${t.channel||'—'}</span></td>
+    </tr>`;
+  }).join('');
+  
+  tbody.innerHTML += `<tr style="background:var(--surface2);font-weight:600;">
+    <td colspan="7" style="text-align:right;padding:10px 12px;font-size:13px;color:var(--text2);">รวมทั้งวัน</td>
+    <td class="num">${revenue.toLocaleString()}</td>
+    <td class="num ${profit>=0?'text-green':'text-red'}">${Math.round(profit).toLocaleString()}</td>
+    <td></td>
+  </tr>`;
+}
+
+function renderMonthlyReport() {
+  const monthInput = document.getElementById('reportMonth').value;
+  const now = new Date();
+  const targetYear = monthInput ? parseInt(monthInput.split('-')[0]) : now.getFullYear();
+  const targetMonth = monthInput ? parseInt(monthInput.split('-')[1])-1 : now.getMonth();
+  
+  const monthSales = getReportRows().filter(t => {
+    const d = new Date(t.date);
+    return d.getFullYear()===targetYear && d.getMonth()===targetMonth;
+  });
+
+  const revenue = monthSales.reduce((s,t)=>s+t.revenue,0);
+  const profit = monthSales.reduce((s,t)=>s+t.profit,0);
+  const margin = revenue > 0 ? ((profit/revenue)*100).toFixed(1) : '0.0';
+  const avgPerDay = monthSales.length > 0 ? Math.round(revenue / (new Set(monthSales.map(t=>new Date(t.date).toDateString())).size)) : 0;
+
+  document.getElementById('monthlyMetrics').innerHTML = `
+    <div class="metric"><div class="metric-label">รายการรายได้ทั้งเดือน</div><div class="metric-value">${monthSales.length}</div><div class="metric-sub">ขาย / ไถ่ถอน / ปิดออม</div></div>
+    <div class="metric"><div class="metric-label">รายรับรวม</div><div class="metric-value">${(revenue/1000).toFixed(0)}K</div><div class="metric-sub">บาท</div></div>
+    <div class="metric green"><div class="metric-label">กำไรสุทธิ</div><div class="metric-value">${(profit/1000).toFixed(1)}K</div><div class="metric-sub">บาท</div></div>
+    <div class="metric"><div class="metric-label">Margin เฉลี่ย</div><div class="metric-value">${margin}%</div></div>
+    <div class="metric gold"><div class="metric-label">เฉลี่ย/วัน</div><div class="metric-value">${(avgPerDay/1000).toFixed(1)}K</div><div class="metric-sub">บาท</div></div>
+  `;
+
+  // Group by day
+  const dayMap = {};
+  monthSales.forEach(t => {
+    const key = new Date(t.date).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    if (!dayMap[key]) dayMap[key] = { count:0, revenue:0, cost:0, fee:0, profit:0 };
+    dayMap[key].count++;
+    dayMap[key].revenue += t.revenue;
+    dayMap[key].cost += t.cost;
+    dayMap[key].fee += t.fee;
+    dayMap[key].profit += t.profit;
+  });
+
+  const tbody = document.getElementById('monthlyTbody');
+  if (!Object.keys(dayMap).length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-text">ไม่มีข้อมูลเดือนนี้</div></div></td></tr>'; return; }
+  
+  tbody.innerHTML = Object.entries(dayMap).map(([day,d]) => {
+    const m = d.revenue > 0 ? ((d.profit/d.revenue)*100).toFixed(1) : '0.0';
+    return `<tr>
+      <td class="mono">${day}</td>
+      <td class="num">${d.count}</td>
+      <td class="num">${d.revenue.toLocaleString()}</td>
+      <td class="num">${Math.round(d.cost).toLocaleString()}</td>
+      <td class="num">${Math.round(d.fee).toLocaleString()}</td>
+      <td class="num ${d.profit>=0?'text-green':'text-red'}"><strong>${Math.round(d.profit).toLocaleString()}</strong></td>
+      <td class="num">${m}%</td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML += `<tr style="background:var(--surface2);font-weight:600;">
+    <td style="padding:10px 12px;font-size:13px;">รวมทั้งเดือน</td>
+    <td class="num">${monthSales.length}</td>
+    <td class="num">${revenue.toLocaleString()}</td>
+    <td class="num">${Math.round(monthSales.reduce((s,t)=>s+t.cost,0)).toLocaleString()}</td>
+    <td class="num">${Math.round(monthSales.reduce((s,t)=>s+t.fee,0)).toLocaleString()}</td>
+    <td class="num ${profit>=0?'text-green':'text-red'}">${Math.round(profit).toLocaleString()}</td>
+    <td class="num">${margin}%</td>
+  </tr>`;
+}
+
+function exportReport() {
+  const isMo = reportMode === 'monthly';
+  let csv = isMo
+    ? 'วันที่,รายการ,รายรับ,ต้นทุน,ค่ากำเหน็จ,กำไร,Margin\n'
+    : 'เวลา,TXN,ประเภท,สินค้า,ลูกค้า,จำนวน,ต้นทุน/ชิ้น,รายรับ,ส่วนลด,กำไร,ช่องทาง\n';
+  
+  const now = new Date();
+  if (!isMo) {
+    const dateInput = document.getElementById('reportDate').value;
+    const targetDate = parseDateInputLocal(dateInput);
+    const sales = getReportRows().filter(t => isSameLocalDay(t.date, targetDate));
+    sales.forEach(t => {
+      const time = new Date(t.date).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+      csv += `${time},${t.txnNo || t.pawnNo || ''},"${t.category}","${t.productName||''}","${t.customer||''}",${t.qty},${Math.round(t.cost||0)},${t.revenue},${t.discount||0},${Math.round(t.profit||0)},${t.channel||''}\n`;
+    });
+  } else {
+    const monthInput = document.getElementById('reportMonth').value;
+    const y = monthInput ? parseInt(monthInput.split('-')[0]) : now.getFullYear();
+    const m = monthInput ? parseInt(monthInput.split('-')[1])-1 : now.getMonth();
+    const sales = getReportRows().filter(t=>{const d=new Date(t.date);return d.getFullYear()===y&&d.getMonth()===m;});
+    const dayMap = {};
+    sales.forEach(t=>{const k=new Date(t.date).toLocaleDateString('th-TH');if(!dayMap[k])dayMap[k]={count:0,revenue:0,cost:0,fee:0,profit:0};dayMap[k].count++;dayMap[k].revenue+=t.revenue;dayMap[k].cost+=t.cost;dayMap[k].fee+=t.fee;dayMap[k].profit+=(t.profit||0);});
+    Object.entries(dayMap).forEach(([d,v])=>{const mg=v.revenue>0?((v.profit/v.revenue)*100).toFixed(1):'0';csv+=`${d},${v.count},${v.revenue},${Math.round(v.cost)},${Math.round(v.fee)},${Math.round(v.profit)},${mg}%\n`;});
+  }
+  
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`PL_${reportMode}_${now.toISOString().slice(0,10)}.csv`; a.click();
+}
+
+// ============ REPORT INIT DATES ============
+function initReportDates() {
+  const now = new Date();
+  document.getElementById('reportDate').value = now.toISOString().slice(0,10);
+  document.getElementById('reportMonth').value = now.toISOString().slice(0,7);
+}
+
+// ============ SEED DATA ============
+function seedIfEmpty() {
+  if (products.length > 0) return;
+  const d = new Date().toISOString();
+  const s = (source) => source || 'ซัพพลายเออร์';
+  // ราคาทอง spot=72,230 บ./บาท; goldCost = spot*0.965*(weightUnit/4)
+  // กรัม: 0.3g=354บ., 0.5g=590บ., 1g=1,179บ.
+  // สลึง: ครึ่งสลึง=8,713บ., 1สลึง=17,426บ., 2สลึง=34,851บ.
+  // บาท: 1บาท=69,702บ., 2บาท=139,403บ., 3บาท=209,105บ., 5บาท=348,508บ., 10บาท=697,015บ.
+  const seedData = [
+    // ──── กลุ่มกรัม (ราคาเบาย่อมเยา) ────
+    { code:'SC-001', name:'สร้อยคอ ลายโซ่เล็ก 0.3g',    type:'SC', weight:'g0.3', tray:'ถาดสร้อย-01', fee:150,  lots:[{cost:354,   qty:15, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SC-002', name:'สร้อยคอ ลายเม็ดข้าว 0.5g',   type:'SC', weight:'g0.5', tray:'ถาดสร้อย-01', fee:200,  lots:[{cost:590,   qty:12, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SC-003', name:'สร้อยคอ ลายโซ่ 1g',           type:'SC', weight:'g1',   tray:'ถาดสร้อย-02', fee:300,  lots:[{cost:1179,  qty:10, date:d, source:'ซัพพลายเออร์'}]},
+
+    // ──── กลุ่มสลึง ────
+    { code:'SC-004', name:'สร้อยคอ ลายผ่าหวาย ครึ่งสลึง', type:'SC', weight:0.5, tray:'ถาดสร้อย-03', fee:250, lots:[{cost:8713,  qty:10, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SC-005', name:'สร้อยคอ ลายเชือก 1 สลึง',      type:'SC', weight:1,   tray:'ถาดสร้อย-04', fee:350, lots:[{cost:17426, qty:8,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SC-006', name:'สร้อยคอ ลายห่วง 2 สลึง',       type:'SC', weight:2,   tray:'ถาดสร้อย-05', fee:500, lots:[{cost:34851, qty:6,  date:d, source:'ซัพพลายเออร์'}]},
+
+    // ──── กลุ่มบาท (1-10 บาท) ────
+    { code:'SC-007', name:'สร้อยคอ ลายโซ่ 1 บาท',         type:'SC', weight:4,  tray:'ถาดสร้อย-06', fee:1000, lots:[{cost:69702,  qty:5, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SC-008', name:'สร้อยคอ ลายสิงโต 2 บาท',       type:'SC', weight:8,  tray:'ถาดสร้อย-07', fee:1500, lots:[{cost:139403, qty:4, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SC-009', name:'สร้อยคอ ลายพิกุล 5 บาท',       type:'SC', weight:20, tray:'ถาดสร้อย-08', fee:2500, lots:[{cost:348508, qty:2, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SC-010', name:'สร้อยคอ ลายแฟนซี 10 บาท',      type:'SC', weight:40, tray:'ถาดสร้อย-09', fee:4000, lots:[{cost:697015, qty:1, date:d, source:'ซัพพลายเออร์'}]},
+
+    // ──── แหวน ────
+    { code:'RG-001', name:'แหวนเกลี้ยง ครึ่งสลึง',        type:'RG', weight:0.5, tray:'หน้าตู้-01', fee:200, lots:[{cost:8713,  qty:12, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'RG-002', name:'แหวนลายดอก 1 สลึง',            type:'RG', weight:1,   tray:'หน้าตู้-01', fee:300, lots:[{cost:17426, qty:10, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'RG-003', name:'แหวนมังกร 2 สลึง',             type:'RG', weight:2,   tray:'หน้าตู้-02', fee:450, lots:[{cost:34851, qty:8,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'RG-004', name:'แหวนเกลี้ยง 1 บาท',            type:'RG', weight:4,   tray:'หน้าตู้-02', fee:800, lots:[{cost:69702, qty:5,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'RG-005', name:'แหวนนพเก้า 2 บาท',             type:'RG', weight:8,   tray:'หน้าตู้-03', fee:1500,lots:[{cost:139403,qty:3,  date:d, source:'ซัพพลายเออร์'}]},
+
+    // ──── สร้อยข้อมือ ────
+    { code:'SK-001', name:'สร้อยข้อมือ ลายเม็ดข้าว 0.5g', type:'SK', weight:'g0.5', tray:'หน้าตู้-01', fee:180, lots:[{cost:590,   qty:10, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SK-002', name:'สร้อยข้อมือ ลายโซ่ 1 สลึง',    type:'SK', weight:1,     tray:'หน้าตู้-01', fee:300, lots:[{cost:17426, qty:8,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SK-003', name:'สร้อยข้อมือ ลายห่วง 2 สลึง',   type:'SK', weight:2,     tray:'หน้าตู้-02', fee:450, lots:[{cost:34851, qty:6,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'SK-004', name:'สร้อยข้อมือ ลายพิกุล 1 บาท',   type:'SK', weight:4,     tray:'หน้าตู้-03', fee:900, lots:[{cost:69702, qty:4,  date:d, source:'ซัพพลายเออร์'}]},
+
+    // ──── ต่างหู ────
+    { code:'EA-001', name:'ต่างหู ลายดอก 0.3g',           type:'EA', weight:'g0.3', tray:'หน้าตู้-04', fee:120, lots:[{cost:354,  qty:15, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'EA-002', name:'ต่างหู ห่วงเล็ก 0.5g',         type:'EA', weight:'g0.5', tray:'หน้าตู้-04', fee:180, lots:[{cost:590,  qty:12, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'EA-003', name:'ต่างหู ลายดาว 1g',             type:'EA', weight:'g1',   tray:'หน้าตู้-04', fee:250, lots:[{cost:1179, qty:10, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'EA-004', name:'ต่างหู ห่วงใหญ่ ครึ่งสลึง',   type:'EA', weight:0.5,    tray:'หน้าตู้-04', fee:200, lots:[{cost:8713, qty:8,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'EA-005', name:'ต่างหู ลายดอกไม้ 1 สลึง',     type:'EA', weight:1,      tray:'หน้าตู้-04', fee:300, lots:[{cost:17426,qty:6,  date:d, source:'ซัพพลายเออร์'}]},
+
+    // ──── จี้ / กรอบพระ ────
+    { code:'PD-001', name:'จี้ ลายดอกบัว 0.3g',           type:'PD', weight:'g0.3', tray:'หน้าตู้-05', fee:120, lots:[{cost:354,  qty:12, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'PD-002', name:'กรอบพระ ลายเรียบ 0.5g',        type:'PD', weight:'g0.5', tray:'หน้าตู้-05', fee:180, lots:[{cost:590,  qty:10, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'PD-003', name:'กรอบพระ ลายสวย 1g',            type:'PD', weight:'g1',   tray:'หน้าตู้-05', fee:250, lots:[{cost:1179, qty:8,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'PD-004', name:'จี้ หัวใจ ครึ่งสลึง',          type:'PD', weight:0.5,    tray:'หน้าตู้-05', fee:200, lots:[{cost:8713, qty:8,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'PD-005', name:'จี้ พระพรหม 1 สลึง',           type:'PD', weight:1,      tray:'หน้าตู้-05', fee:350, lots:[{cost:17426,qty:6,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'PD-006', name:'จี้ นกยูง 2 สลึง',             type:'PD', weight:2,      tray:'หน้าตู้-05', fee:500, lots:[{cost:34851,qty:4,  date:d, source:'ซัพพลายเออร์'}]},
+    { code:'PD-007', name:'จี้ พระพิฆเนศ 1 บาท',          type:'PD', weight:4,      tray:'หน้าตู้-05', fee:1000,lots:[{cost:69702,qty:3,  date:d, source:'ซัพพลายเออร์'}]},
+
+    // ──── ทองแท่ง ────
+    { code:'GB-001', name:'ทองแท่ง 1 บาท',                type:'GB', weight:4,  tray:'เซฟ', fee:0, lots:[{cost:69702,  qty:5, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'GB-002', name:'ทองแท่ง 2 บาท',                type:'GB', weight:8,  tray:'เซฟ', fee:0, lots:[{cost:139403, qty:3, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'GB-003', name:'ทองแท่ง 5 บาท',                type:'GB', weight:20, tray:'เซฟ', fee:0, lots:[{cost:348508, qty:2, date:d, source:'ซัพพลายเออร์'}]},
+    { code:'GB-004', name:'ทองแท่ง 10 บาท',               type:'GB', weight:40, tray:'เซฟ', fee:0, lots:[{cost:697015, qty:1, date:d, source:'ซัพพลายเออร์'}]},
+  ];
+  products = seedData;
+  save();
+}
+
+// ============ RECEIPT ============
+function showReceipt(data) {
+  const now = new Date();
+  const ds = now.toLocaleDateString('th-TH',{day:'2-digit',month:'long',year:'numeric'}) + ' ' + now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  const shopName = 'ห้างทองร่ำรวยดี';
+  const taxId = '0-0000-00000-00-0';
+  const cashierName = currentUser?.name || '—';
+  document.getElementById('receiptContent').innerHTML = `
+    <div class="receipt" id="printReceipt">
+      <h2>${shopName}</h2>
+      <div class="sub">เลขที่ผู้เสียภาษี: ${taxId}<br>${ds}</div>
+      <div class="r-row" style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;border-bottom:2px solid var(--text);padding-bottom:6px;margin-bottom:4px;">
+        <span>เลขที่ใบเสร็จ</span><span>${data.txnNo||'—'}</span>
+      </div>
+      <div class="r-row"><span>สินค้า</span><span>${data.productName}</span></div>
+      <div class="r-row"><span>จำนวน</span><span>${data.qty} ชิ้น</span></div>
+      <div class="r-row"><span>ราคาต่อชิ้น</span><span>${data.sp.toLocaleString()} บาท</span></div>
+      ${data.discount>0?`<div class="r-row"><span>ส่วนลด</span><span>-${data.discount.toLocaleString()} บาท</span></div>`:''}
+      <div class="r-total"><span>รวมทั้งสิ้น</span><span>${data.total.toLocaleString()} บาท</span></div>
+      ${data.customer?`<div class="r-row" style="border:none;font-size:12px;color:var(--text3);"><span>ลูกค้า</span><span>${data.customer}</span></div>`:''}
+      ${data.channel?`<div class="r-row" style="border:none;font-size:12px;color:var(--text3);"><span>ช่องทาง</span><span>${data.channel}</span></div>`:''}
+      <div class="r-row" style="border:none;font-size:12px;color:var(--text3);"><span>พนักงาน</span><span>${cashierName}</span></div>
+      <div class="thank">ขอบคุณที่ใช้บริการ<br>◈ ${shopName} ◈<br>ทองคำแท้ 96.5% รับประกันทุกชิ้น</div>
+    </div>
+  `;
+  document.getElementById('receiptModal').classList.add('open');
+}
+
+function showBuyReceipt(data) {
+  const now = new Date();
+  const ds = now.toLocaleDateString('th-TH',{day:'2-digit',month:'long',year:'numeric'}) + ' ' + now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  const shopName = 'ห้างทองร่ำรวยดี';
+  const cashierName = currentUser?.name || '—';
+  document.getElementById('receiptContent').innerHTML = `
+    <div class="receipt" id="printReceipt">
+      <h2>${shopName}</h2>
+      <div class="sub" style="background:var(--amber-bg);color:var(--amber);padding:4px 8px;border-radius:6px;display:inline-block;font-weight:600;margin-bottom:8px;">ใบรับซื้อทองเก่า</div>
+      <div class="sub">${ds}</div>
+      <div class="r-row" style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;border-bottom:2px solid var(--text);padding-bottom:6px;margin-bottom:4px;">
+        <span>เลขที่ใบรับซื้อ</span><span>${data.txnNo||'—'}</span>
+      </div>
+      <div class="r-row"><span>รายการ</span><span>${data.name}</span></div>
+      <div class="r-row"><span>น้ำหนัก</span><span>${data.weight}</span></div>
+      <div class="r-row"><span>ชื่อผู้ขาย</span><span>${data.customer||'—'}</span></div>
+      <div class="r-row"><span>เลขบัตรประชาชน</span><span>${data.customerId}</span></div>
+      <div class="r-total"><span>ราคารับซื้อ</span><span>${data.price.toLocaleString()} บาท</span></div>
+      <div class="r-row" style="border:none;font-size:12px;color:var(--text3);margin-top:4px;"><span>พนักงาน</span><span>${cashierName}</span></div>
+      <div class="r-row" style="border:none;font-size:11px;color:var(--text3);"><span>นำเข้าสต็อก</span><span>${data.toStock==='yes'?'✓ ใช่':'ไม่'}</span></div>
+      <div class="thank" style="font-size:11px;color:var(--text3);margin-top:10px;">เอกสารนี้ใช้เป็นหลักฐานการรับซื้อทองตามกฎหมาย</div>
+    </div>
+  `;
+  document.getElementById('receiptModal').classList.add('open');
+}
+
+// ============ CRM HELPERS ============
+function normalizePhone(phone) {
+  return String(phone || '').replace(/\D/g, '');
+}
+
+function upsertCustomerRecord(name, phone) {
+  const cleanName = String(name || '').trim();
+  const cleanPhone = normalizePhone(phone);
+  if (!cleanName && !cleanPhone) return null;
+
+  let c = customers.find(x =>
+    (cleanPhone && normalizePhone(x.phone) === cleanPhone) ||
+    (cleanName && x.name === cleanName)
+  );
+  if (!c) {
+    c = {
+      id: cleanPhone ? 'cust_' + cleanPhone : 'cust_' + Date.now(),
+      name: cleanName || 'ลูกค้า',
+      phone: cleanPhone,
+      transactions: [],
+      points: 0
+    };
+    customers.push(c);
+  }
+  if (cleanName && !c.name) c.name = cleanName;
+  if (cleanPhone && !c.phone) c.phone = cleanPhone;
+  if (!c.id) c.id = cleanPhone ? 'cust_' + cleanPhone : 'cust_' + Date.now();
+  if (!Array.isArray(c.transactions)) c.transactions = [];
+  return c;
+}
+
+function addCustomerTransaction(name, type, item, amount) {
+  if (!name || name.trim()==='') return;
+  name = name.trim();
+  let c = upsertCustomerRecord(name, '');
+  c.transactions.push({ type, item, amount, date:new Date().toISOString() });
+  if (type==='sale') c.points = (c.points||0) + Math.floor(amount/1000);
+  save();
+}
+
+function renderCRM() {
+  const q = (document.getElementById('crmSearch').value||'').toLowerCase();
+  const filtered = customers.filter(c => !q || c.name.toLowerCase().includes(q));
+  const grid = document.getElementById('crmGrid');
+  if (!filtered.length) { grid.innerHTML='<div class="empty"><div class="empty-text">ยังไม่มีข้อมูลลูกค้า — เริ่มบันทึกชื่อลูกค้าเมื่อขาย</div></div>'; return; }
+  grid.innerHTML = filtered.map(c => {
+    const total = c.transactions.filter(t=>t.type==='sale').reduce((s,t)=>s+t.amount,0);
+    const cnt = c.transactions.length;
+    const id = c.id || c.phone || c.name;
+    return `<div class="crm-card">
+      <div onclick="showCRMDetail('${id}')" style="cursor:pointer;">
+        <div class="crm-name">${c.name}</div>
+        <div class="crm-meta">${cnt} รายการ · ยอดรวม ${total.toLocaleString()} บาท · คะแนน ${c.points||0} pt</div>
+      </div>
+      ${can('editCustomer') ? `<div style="display:flex;gap:6px;margin-top:10px;">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCustomer('${id}')">แก้ไข</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCustomer('${id}')">ลบ</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function getCustomerByKey(key) {
+  return customers.find(x => String(x.id || x.phone || x.name) === String(key) || x.name === key);
+}
+
+function showCRMDetail(key) {
+  const c = getCustomerByKey(key);
+  if (!c) return;
+  const rows = [...c.transactions].reverse().slice(0,20).map(t=>{
+    const icon = t.type==='sale'?'⬆':t.type==='pawn'?'◈':'◎';
+    const label = t.type==='sale'?'ขาย':t.type==='pawn'?'จำนำ':'ออม';
+    const ds = new Date(t.date).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return `<div class="tx-row"><div class="tx-icon ${t.type==='sale'?'sale':'buy'}">${icon}</div>
+      <div class="tx-meta"><div class="tx-name">${t.item}</div><div class="tx-date">${label} · ${ds}</div></div>
+      <div class="tx-amount ${t.type==='sale'?'sale':'buy'}">${t.type==='sale'?'+':''} ${t.amount.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+  const totalSale = c.transactions.filter(t=>t.type==='sale').reduce((s,t)=>s+t.amount,0);
+  document.getElementById('crmModalContent').innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div style="font-size:18px;font-weight:600;">${c.name}</div>
+      <div style="font-size:13px;color:var(--text3);">คะแนนสะสม: ${c.points||0} pt · ยอดซื้อรวม: ${totalSale.toLocaleString()} บาท</div>
+    </div>
+    <div style="margin-bottom:12px;font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;">ประวัติล่าสุด</div>
+    ${rows || '<div class="empty"><div class="empty-text">ยังไม่มีรายการ</div></div>'}
+  `;
+  document.getElementById('crmModal').classList.add('open');
+}
+
+function editCustomer(key) {
+  if (!requirePerm('editCustomer', 'ไม่มีสิทธิ์แก้ไขลูกค้า')) return;
+  const c = getCustomerByKey(key);
+  if (!c) return;
+  document.getElementById('customerEditId').value = c.id || c.phone || c.name;
+  document.getElementById('customerName').value = c.name || '';
+  document.getElementById('customerPhone').value = c.phone || '';
+  document.getElementById('customerPoints').value = c.points || 0;
+  document.getElementById('customerModal').classList.add('open');
+}
+
+function saveCustomerEdit() {
+  const key = document.getElementById('customerEditId').value;
+  const c = getCustomerByKey(key);
+  if (!c) return;
+  const oldName = c.name;
+  const name = document.getElementById('customerName').value.trim();
+  const phone = normalizePhone(document.getElementById('customerPhone').value);
+  if (!name && !phone) { alert('กรุณากรอกชื่อลูกค้าหรือเบอร์โทร'); return; }
+  c.name = name || c.name || 'ลูกค้า';
+  c.phone = phone;
+  c.points = parseInt(document.getElementById('customerPoints').value) || 0;
+  if (!c.id) c.id = phone ? 'cust_' + phone : 'cust_' + Date.now();
+  transactions.forEach(t => {
+    if (t.customer === oldName || t.customerName === oldName) {
+      t.customer = c.name;
+      t.customerName = c.name;
+      if (phone) t.customerPhone = phone;
+    }
+  });
+  pawns.forEach(p => {
+    if (p.customer === oldName || p.customerName === oldName) {
+      p.customer = c.name;
+      p.customerName = c.name;
+      if (phone) {
+        p.phone = phone;
+        p.customerPhone = phone;
+      }
+    }
+  });
+  savingsAccounts.forEach(sv => {
+    if (sv.customer === oldName || sv.customerName === oldName) {
+      sv.customer = c.name;
+      sv.customerName = c.name;
+      if (phone) {
+        sv.phone = phone;
+        sv.customerPhone = phone;
+      }
+    }
+  });
+  save(); closeModal('customerModal'); renderCRM(); renderHistory(); renderPawn(); renderSavings();
+  showToast('บันทึกข้อมูลลูกค้าแล้ว', 'success');
+}
+
+function deleteCustomer(key) {
+  if (!requirePerm('editCustomer', 'ไม่มีสิทธิ์ลบลูกค้า')) return;
+  const c = getCustomerByKey(key);
+  if (!c) return;
+  if (!confirm(`ลบลูกค้า ${c.name || c.phone}?`)) return;
+  const docId = c._docId || c.id || c.phone || c.name;
+  customers = customers.filter(x => getCustomerByKey(key) !== x);
+  if (window._fbReady && docId) window._fb.deleteDoc('customers', docId);
+  save(); renderCRM();
+}
+
+// ============ PAWN ============
+function getPawnKey(p) {
+  return p?.ticket || p?.id || p?.pawnNo || '';
+}
+
+function getPawnDocId(p) {
+  return p?._docId || p?.id || p?.pawnNo || p?.ticket || '';
+}
+
+function formatDateTH(date) {
+  return date ? new Date(date).toLocaleDateString('th-TH', { day:'2-digit', month:'2-digit', year:'numeric' }) : '-';
+}
+
+function calcPawnInterestValue(p) {
+  const amount = Number(p?.amount || 0);
+  const rate = Number(p?.rate || p?.interest || 0);
+  const months = Number(p?.months || 0);
+  return Math.round(amount * (rate / 100) * months);
+}
+
+function calcPawnRedeemTotal(p) {
+  return Number(p?.amount || 0) + calcPawnInterestValue(p);
+}
+
+function resetPawnModal() {
+  document.getElementById('pawnEditTicket').value = '';
+  document.getElementById('pawnItem').value = '';
+  document.getElementById('pawnWeight').value = '4';
+  document.getElementById('pawnAmount').value = '';
+  document.getElementById('pawnRate').value = '1.5';
+  document.getElementById('pawnMonths').value = '3';
+  document.getElementById('pawnCustomer').value = '';
+  document.getElementById('pawnPhone').value = '';
+  document.getElementById('pawnID').value = '';
+  document.getElementById('pawnSaveBtn').textContent = 'บันทึกจำนำ';
+  document.getElementById('pawnPreview').innerHTML = '';
+}
+
+function openPawnModal() {
+  if (!requirePerm('pawn', 'ไม่มีสิทธิ์รับจำนำ')) return;
+  resetPawnModal();
+  document.getElementById('pawnModalTitle').textContent='รับจำนำ / ขายฝาก';
+  calcPawnInterest();
+  document.getElementById('pawnModal').classList.add('open');
+}
+
+function editPawn(ticket) {
+  if (!requirePerm('pawn', 'ไม่มีสิทธิ์แก้ไขตั๋วจำนำ')) return;
+  const p = pawns.find(x => getPawnKey(x) === ticket);
+  if (!p) return;
+  document.getElementById('pawnModalTitle').textContent='แก้ไขตั๋วจำนำ / ขายฝาก';
+  document.getElementById('pawnEditTicket').value = getPawnKey(p);
+  document.getElementById('pawnItem').value = p.item || p.itemDescription || '';
+  document.getElementById('pawnWeight').value = p.weight || '4';
+  document.getElementById('pawnAmount').value = p.amount || '';
+  document.getElementById('pawnRate').value = p.rate || p.interest || 1.5;
+  document.getElementById('pawnMonths').value = p.months || 3;
+  document.getElementById('pawnCustomer').value = p.customerName || p.customer || '';
+  document.getElementById('pawnPhone').value = p.customerPhone || p.phone || '';
+  document.getElementById('pawnID').value = p.idCard || '';
+  document.getElementById('pawnSaveBtn').textContent = 'บันทึกการแก้ไข';
+  calcPawnInterest();
+  document.getElementById('pawnModal').classList.add('open');
+}
+
+function calcPawnInterest() {
+  const amt = parseFloat(document.getElementById('pawnAmount').value)||0;
+  const rate = parseFloat(document.getElementById('pawnRate').value)||1.5;
+  const months = parseInt(document.getElementById('pawnMonths').value)||3;
+  const interest = amt * (rate/100) * months;
+  const total = amt + interest;
+  document.getElementById('pawnPreview').innerHTML = amt>0 ? `
+    <div class="row"><span>ยอดจำนำ</span><span>${amt.toLocaleString()} บาท</span></div>
+    <div class="row"><span>ดอกเบี้ย ${rate}%/เดือน × ${months} เดือน</span><span>${Math.round(interest).toLocaleString()} บาท</span></div>
+    <div class="row total"><span>ยอดไถ่ถอน</span><span>${Math.round(total).toLocaleString()} บาท</span></div>` : '';
+}
+
+function confirmPawn() {
+  const item = document.getElementById('pawnItem').value.trim();
+  const customer = document.getElementById('pawnCustomer').value.trim();
+  const phone = document.getElementById('pawnPhone').value.trim();
+  const idCard = document.getElementById('pawnID').value.trim();
+  const amount = parseFloat(document.getElementById('pawnAmount').value);
+  const rate = parseFloat(document.getElementById('pawnRate').value)||1.5;
+  const months = parseInt(document.getElementById('pawnMonths').value)||3;
+  const weight = document.getElementById('pawnWeight').value;
+  const editTicket = document.getElementById('pawnEditTicket').value;
+  if (!item||!idCard||!amount||!customer||!phone) { alert('กรุณากรอกรายการสินค้า ชื่อลูกค้า เบอร์โทร เลขบัตร และยอดจำนำให้ครบ'); return; }
+  const customerRecord = upsertCustomerRecord(customer, phone);
+  let p = editTicket ? pawns.find(x => getPawnKey(x) === editTicket) : null;
+  const isEdit = !!p;
+  const due = isEdit && p.dueDate ? new Date(p.dueDate) : new Date();
+  if (!isEdit) due.setMonth(due.getMonth()+months);
+  const ticket = isEdit ? getPawnKey(p) : 'PN-' + String(pawns.length+1).padStart(4,'0');
+  const payload = {
+    ticket,
+    id: ticket,
+    pawnNo: ticket,
+    item,
+    itemDescription: item,
+    weight,
+    customer,
+    customerName: customer,
+    phone,
+    customerPhone: phone,
+    customerId: customerRecord?.id || '',
+    idCard,
+    amount,
+    rate,
+    interest: rate,
+    months,
+    dueDate: due.toISOString(),
+    status: isEdit ? (p.status || 'active') : 'active',
+    date: isEdit ? (p.date || new Date().toISOString()) : new Date().toISOString(),
+    payments: isEdit ? (p.payments || []) : []
+  };
+  const docId = isEdit ? getPawnDocId(p) : ticket;
+  payload._docId = docId;
+  if (isEdit) Object.assign(p, payload, { updatedAt: new Date().toISOString() });
+  else pawns.push(payload);
+  if (!isEdit) addCustomerTransaction(customer, 'pawn', item, amount);
+  if (window._fbReady) awaitSafeSavePawn(docId, payload);
+  save(); closeModal('pawnModal'); renderPawn();
+  alert(`${isEdit ? 'แก้ไข' : 'บันทึก'}จำนำเรียบร้อย\nเลขตั๋ว: ${ticket}\nครบกำหนด: ${due.toLocaleDateString('th-TH')}`);
+}
+
+function renderPawn() {
+  const q = (document.getElementById('pawnSearch').value||'').toLowerCase();
+  const sf = document.getElementById('pawnStatusFilter').value;
+  const now = new Date();
+  const filtered = pawns.filter(p => {
+    const ticket = getPawnKey(p).toLowerCase();
+    const customer = (p.customerName || p.customer || '').toLowerCase();
+    const item = (p.item || p.itemDescription || '').toLowerCase();
+    const phone = (p.customerPhone || p.phone || '').toLowerCase();
+    const matchQ = !q || ticket.includes(q) || customer.includes(q) || item.includes(q) || phone.includes(q);
+    let status = p.status;
+    if (status==='active') {
+      const due = new Date(p.dueDate);
+      const daysLeft = Math.ceil((due-now)/(1000*60*60*24));
+      if (daysLeft < 0) status='overdue';
+      else if (daysLeft <= 7) status='due';
+    }
+    const matchS = !sf || status===sf;
+    return matchQ && matchS;
+  });
+  const tbody = document.getElementById('pawnTbody');
+  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-text">ไม่มีรายการจำนำ</div></div></td></tr>'; return; }
+  tbody.innerHTML = filtered.map(p => {
+    const due = new Date(p.dueDate);
+    const daysLeft = Math.ceil((due-now)/(1000*60*60*24));
+    const interest = p.amount*(p.rate/100)*p.months;
+    const redeem = p.amount + interest;
+    let statusClass='pawn-active', statusLabel='จำนำอยู่';
+    if (p.status==='closed') { statusClass='pawn-closed'; statusLabel='ไถ่ถอนแล้ว'; }
+    else if (daysLeft<0) { statusClass='pawn-overdue'; statusLabel='เกินกำหนด '+Math.abs(daysLeft)+' วัน'; }
+    else if (daysLeft<=7) { statusClass='pawn-due'; statusLabel='ครบใน '+daysLeft+' วัน'; }
+    return `<tr>
+      <td><span class="mono">${getPawnKey(p)}</span></td>
+      <td><div style="font-weight:500;">${p.item || p.itemDescription}</div><div style="font-size:11px;color:var(--text3);">${WEIGHT_LABELS[p.weight]||''}</div></td>
+      <td><div>${p.customerName || p.customer || '—'}</div><div style="font-size:11px;color:var(--text3);">${p.customerPhone || p.phone || 'ไม่มีเบอร์'}</div></td>
+      <td class="num">${p.amount.toLocaleString()}</td>
+      <td class="num">${Math.round(interest).toLocaleString()}</td>
+      <td class="num">${due.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'})}</td>
+      <td><span class="pawn-status ${statusClass}">${statusLabel}</span></td>
+      <td style="white-space:nowrap;">
+        ${p.status!=='closed'?`<button class="btn btn-ghost btn-sm" onclick="renewPawn('${getPawnKey(p)}')">ต่อดอก</button>
+        <button class="btn btn-primary btn-sm" onclick="redeemPawn('${getPawnKey(p)}')">ไถ่ถอน</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="editPawn('${getPawnKey(p)}')">แก้ไข</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePawn('${getPawnKey(p)}')">ลบ</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renewPawn(ticket) {
+  if (!requirePerm('pawn', 'ไม่มีสิทธิ์ต่อดอก')) return;
+  const p = pawns.find(x=>getPawnKey(x)===ticket);
+  if (!p) return;
+  const months = parseInt(prompt('ต่อดอกกี่เดือน?','1')||'1');
+  if (!months) return;
+  const due = new Date(p.dueDate); due.setMonth(due.getMonth()+months);
+  p.dueDate = due.toISOString(); p.months += months;
+  p.payments.push({ type:'renew', months, date:new Date().toISOString() });
+  save(); renderPawn(); alert(`ต่อดอกเรียบร้อย ครบกำหนดใหม่: ${due.toLocaleDateString('th-TH')}`);
+}
+
+function redeemPawn(ticket) {
+  if (!requirePerm('pawn', 'ไม่มีสิทธิ์ไถ่ถอน')) return;
+  const p = pawns.find(x=>getPawnKey(x)===ticket);
+  if (!p) return;
+  const interest = Math.round(p.amount*(p.rate/100)*p.months);
+  if (!confirm(`ยืนยันไถ่ถอน\nเลขตั๋ว: ${p.ticket}\nยอดไถ่ถอน: ${(p.amount+interest).toLocaleString()} บาท`)) return;
+  p.status='closed'; p.closedDate=new Date().toISOString();
+  transactions.push({
+    type:'pawn_redeem',
+    productName:p.item,
+    total:p.amount+interest,
+    amount:p.amount,
+    interest,
+    profit:interest,
+    qty:1,
+    customer:p.customerName || p.customer,
+    customerName:p.customerName || p.customer,
+    customerPhone:p.customerPhone || p.phone || '',
+    customerId:p.customerId || '',
+    pawnNo:getPawnKey(p),
+    dueDate:p.dueDate,
+    date:new Date().toISOString()
+  });
+  save(); renderPawn(); alert('ไถ่ถอนเรียบร้อยค่ะ');
+}
+
+function deletePawn(ticket) {
+  if (!requirePerm('pawn', 'ไม่มีสิทธิ์ลบตั๋วจำนำ')) return;
+  const p = pawns.find(x=>getPawnKey(x)===ticket);
+  if (!p) return;
+  if (!confirm(`ลบตั๋วจำนำ ${ticket}\nลูกค้า: ${p.customerName || p.customer || '-'}\nยืนยันลบรายการนี้?`)) return;
+  const deleteDocIds = [...new Set(pawns
+    .filter(x => getPawnKey(x) === ticket)
+    .map(x => getPawnDocId(x))
+    .filter(Boolean))];
+  pawns = pawns.filter(x => getPawnKey(x) !== ticket);
+  if (window._fbReady) deleteDocIds.forEach(id => window._fb.deleteDoc('pawns', id));
+  save(); renderPawn(); renderPawnAlerts();
+  alert('ลบตั๋วจำนำเรียบร้อย');
+}
+
+async function awaitSafeSavePawn(docId, payload) {
+  try { await window._fb.saveDoc('pawns', docId, payload); }
+  catch (e) { console.error('Pawn save failed', e); }
+}
+
+// ============ SAVINGS ============
+function openSavingsModal() {
+  if (!requirePerm('savings', 'ไม่มีสิทธิ์เปิดบัญชีออมทอง')) return;
+  document.getElementById('savingsModalTitle').textContent = '✨ เปิดบัญชีออมทอง';
+  document.getElementById('savEditId').value = '';
+  document.getElementById('savCustomer').value = '';
+  document.getElementById('savPhone').value = '';
+  document.getElementById('savPeriod').value = 'monthly';
+  document.getElementById('savTopupPct').value = 100;
+  document.getElementById('savingsSaveBtn').textContent = '✦ เปิดบัญชี';
+  document.getElementById('savingsModal').classList.add('open');
+}
+
+function editSavings(id) {
+  if (!requirePerm('savings', 'ไม่มีสิทธิ์แก้ไขบัญชีออมทอง')) return;
+  const sv = savingsAccounts.find(x=>x.id===id);
+  if (!sv) return;
+  document.getElementById('savingsModalTitle').textContent = 'แก้ไขบัญชีออมทอง';
+  document.getElementById('savEditId').value = id;
+  document.getElementById('savCustomer').value = sv.customerName || sv.customer || '';
+  document.getElementById('savPhone').value = sv.customerPhone || sv.phone || '';
+  document.getElementById('savPeriod').value = sv.period || 'monthly';
+  document.getElementById('savTopupPct').value = sv.topupPct ?? 100;
+  document.getElementById('savingsSaveBtn').textContent = 'บันทึกการแก้ไข';
+  document.getElementById('savingsModal').classList.add('open');
+}
+
+function confirmSavings() {
+  if (!requirePerm('savings', 'ไม่มีสิทธิ์เปิดบัญชีออมทอง')) return;
+  const editId = document.getElementById('savEditId').value;
+  const customer = document.getElementById('savCustomer').value.trim();
+  const phone = document.getElementById('savPhone').value.trim();
+  const period = document.getElementById('savPeriod').value;
+  const topupPct = parseFloat(document.getElementById('savTopupPct').value)||0;
+  if (!customer) { alert('กรุณากรอกชื่อลูกค้า'); return; }
+  const customerRecord = upsertCustomerRecord(customer, phone);
+  if (editId) {
+    const sv = savingsAccounts.find(x=>x.id===editId);
+    if (!sv) return;
+    Object.assign(sv, {
+      customer,
+      customerName: customer,
+      phone,
+      customerPhone: phone,
+      customerId: customerRecord?.id || sv.customerId || '',
+      period,
+      topupPct,
+      updatedAt: new Date().toISOString()
+    });
+    save(); closeModal('savingsModal'); renderSavings(); renderCRM();
+    showToast('บันทึกการแก้ไขบัญชีออมทองแล้ว', 'success');
+    return;
+  }
+  const id = 'SV-' + String(savingsAccounts.length+1).padStart(4,'0');
+  savingsAccounts.push({
+    id,
+    customer,
+    customerName: customer,
+    phone,
+    customerPhone: phone,
+    customerId: customerRecord?.id || '',
+    period,
+    topupPct,       // % โบนัสที่ร้านให้
+    saved: 0,       // ยอดรวมทั้งหมด (deposit + bonus)
+    payments: [],   // { deposit, bonus, total, goldPrice, date }
+    status: 'active',
+    date: new Date().toISOString()
+  });
+  addCustomerTransaction(customer, 'savings', 'เปิดบัญชีออมทอง', 0);
+  save(); closeModal('savingsModal'); renderSavings();
+  // แสดงสรุปการเปิดบัญชีทันที
+  showSavingsSummary(id, 'open');
+}
+
+function renderSavings() {
+  const tbody = document.getElementById('savingsTbody');
+  if (!savingsAccounts.length) { tbody.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-text">ยังไม่มีบัญชีออมทอง</div></div></td></tr>'; return; }
+  tbody.innerHTML = savingsAccounts.map(sv => {
+    const totalDeposit = sv.payments.reduce((a,p)=>a+(p.deposit||0),0);
+    const totalBonus   = sv.payments.reduce((a,p)=>a+(p.bonus||0),0);
+    const periodTh = sv.period==='weekly' ? 'สัปดาห์' : 'เดือน';
+    const statusBadge = sv.status==='closed'
+      ? '<span class="chip chip-green">รับสินค้าแล้ว</span>'
+      : `<span class="chip" style="background:var(--amber-bg);color:var(--amber);">กำลังออม</span>`;
+    return `<tr>
+      <td><span class="mono">${sv.id}</span></td>
+      <td><div style="font-weight:500;">${sv.customer}</div><div style="font-size:11px;color:var(--text3);">${sv.phone||'—'}</div></td>
+      <td class="num">${totalDeposit.toLocaleString()}</td>
+      <td class="num" style="color:var(--green);">+${totalBonus.toLocaleString()}</td>
+      <td class="num" style="font-weight:600;color:var(--amber);">${sv.saved.toLocaleString()}</td>
+      <td><div style="font-size:12px;">${sv.payments.length} งวด / ${periodTh}</div></td>
+      <td>${statusBadge}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap;padding-top:10px;">
+        ${sv.status==='active'?`<button class="btn btn-ghost btn-sm" onclick="addSavingsPayment('${sv.id}')">+ ออม</button>
+        <button class="btn btn-primary btn-sm" onclick="closeSavings('${sv.id}')">รับสินค้า</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="editSavings('${sv.id}')">แก้ไข</button>
+        <button class="btn btn-ghost btn-sm" onclick="showSavingsPayments('${sv.id}')">งวด</button>
+        <button class="btn btn-sm" style="background:#06C755;color:#fff;font-weight:600;" onclick="showSavingsSummary('${sv.id}','view')" title="ดูสรุป / ส่ง LINE">📋 LINE</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSavings('${sv.id}')" title="ลบบัญชี">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function calcSavPay() {
+  const dep = parseFloat(document.getElementById('savPayDeposit').value)||0;
+  const pct = parseFloat(document.getElementById('savPayTopup').value)||0;
+  const bonus = Math.round(dep * pct / 100);
+  const total = dep + bonus;
+  const calc = document.getElementById('savPayCalc');
+  if (dep > 0) {
+    calc.style.display = 'block';
+    document.getElementById('savPayDepositShow').textContent = dep.toLocaleString() + ' บาท';
+    document.getElementById('savPayBonusLabel').textContent = `โบนัส Top-up (${pct}%)`;
+    document.getElementById('savPayBonusShow').textContent = '+' + bonus.toLocaleString() + ' บาท';
+    document.getElementById('savPayTotalShow').textContent = total.toLocaleString() + ' บาท';
+  } else {
+    calc.style.display = 'none';
+  }
+}
+
+function addSavingsPayment(id) {
+  if (!requirePerm('savings', 'ไม่มีสิทธิ์บันทึกยอดออม')) return;
+  const sv = savingsAccounts.find(x=>x.id===id);
+  if (!sv) return;
+  document.getElementById('savPayModalTitle').textContent = '💰 บันทึกยอดออมทอง';
+  document.getElementById('savPayId').value = id;
+  document.getElementById('savPayIndex').value = '';
+  document.getElementById('savPayDeposit').value = '';
+  document.getElementById('savPayTopup').value = sv.topupPct ?? 100;
+  document.getElementById('savPayGoldPrice').value = spot;
+  document.getElementById('savPayCalc').style.display = 'none';
+  document.getElementById('savPaySaveBtn').textContent = '✓ บันทึก + แสดงสรุป';
+  document.getElementById('savPayInfo').innerHTML = `<strong>${sv.customer}</strong> &nbsp;·&nbsp; ออมแล้ว <strong>${sv.saved.toLocaleString()} บาท</strong> (${sv.payments.length} งวด)`;
+  document.getElementById('savPayModal').classList.add('open');
+}
+
+function editSavingsPayment(id, index) {
+  if (!requirePerm('savings', 'ไม่มีสิทธิ์แก้ไขยอดออม')) return;
+  const sv = savingsAccounts.find(x=>x.id===id);
+  if (!sv || !sv.payments[index]) return;
+  const pay = sv.payments[index];
+  document.getElementById('savPayModalTitle').textContent = 'แก้ไขยอดออมทอง';
+  document.getElementById('savPayId').value = id;
+  document.getElementById('savPayIndex').value = index;
+  document.getElementById('savPayDeposit').value = pay.deposit || 0;
+  document.getElementById('savPayTopup').value = pay.topupPct ?? (pay.deposit ? Math.round((pay.bonus || 0) / pay.deposit * 100) : 0);
+  document.getElementById('savPayGoldPrice').value = pay.goldPrice || spot;
+  document.getElementById('savPaySaveBtn').textContent = 'บันทึกการแก้ไข';
+  document.getElementById('savPayInfo').innerHTML = `<strong>${sv.customer}</strong> &nbsp;·&nbsp; แก้ไขงวดที่ <strong>${Number(index)+1}</strong>`;
+  calcSavPay();
+  document.getElementById('savPayModal').classList.add('open');
+}
+
+function confirmSavingsPayment() {
+  const id = document.getElementById('savPayId').value;
+  const sv = savingsAccounts.find(x=>x.id===id);
+  if (!sv) return;
+  const editIndexRaw = document.getElementById('savPayIndex').value;
+  const deposit = parseFloat(document.getElementById('savPayDeposit').value)||0;
+  const topupPct = parseFloat(document.getElementById('savPayTopup').value)||0;
+  const goldPrice = parseFloat(document.getElementById('savPayGoldPrice').value)||spot;
+  if (!deposit) { alert('กรุณากรอกยอดที่ลูกค้าฝาก'); return; }
+  const bonus = Math.round(deposit * topupPct / 100);
+  const total = deposit + bonus;
+  const goldWeight = goldPrice > 0 ? deposit / goldPrice : 0;
+  const payment = {
+    deposit,
+    bonus,
+    total,
+    topupPct,
+    goldPrice,
+    goldWeight,
+    date: editIndexRaw === '' ? new Date().toISOString() : (sv.payments[Number(editIndexRaw)]?.date || new Date().toISOString())
+  };
+  if (editIndexRaw === '') {
+    sv.payments.push(payment);
+    addCustomerTransaction(sv.customer, 'savings', 'ออมทอง', total);
+    transactions.push({
+      type:'savings_deposit',
+      productName:'ออมทอง-'+sv.id,
+      total,
+      amount: deposit,
+      qty:1,
+      customer:sv.customer,
+      customerName: sv.customerName || sv.customer,
+      customerPhone: sv.customerPhone || sv.phone || '',
+      customerId: sv.customerId || '',
+      goldPrice,
+      goldWeight,
+      date:new Date().toISOString()
+    });
+  } else {
+    sv.payments[Number(editIndexRaw)] = payment;
+  }
+  sv.saved = sv.payments.reduce((sum,p)=>sum+(p.total||0),0);
+  save(); closeModal('savPayModal'); renderSavings();
+  showSavingsSummary(id, editIndexRaw === '' ? 'payment' : 'view');
+}
+
+function showSavingsPayments(id) {
+  const sv = savingsAccounts.find(x=>x.id===id);
+  if (!sv) return;
+  const rows = (sv.payments || []).map((p, i) => {
+    const d = new Date(p.date || Date.now()).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return `${i+1}. ${d} · ฝาก ${(p.deposit||0).toLocaleString()} + โบนัส ${(p.bonus||0).toLocaleString()} = ${(p.total||0).toLocaleString()}`;
+  }).join('\n');
+  const choice = prompt(`งวดออมทอง ${sv.id} - ${sv.customer}\n\n${rows || 'ยังไม่มีงวดออม'}\n\nพิมพ์เลขงวดเพื่อแก้ไข หรือพิมพ์ d ตามด้วยเลขงวดเพื่อลบ เช่น d2`);
+  if (!choice) return;
+  const value = choice.trim().toLowerCase();
+  if (value.startsWith('d')) {
+    const idx = Number(value.slice(1)) - 1;
+    if (!sv.payments[idx]) { alert('ไม่พบงวดที่เลือก'); return; }
+    if (!confirm(`ลบงวดที่ ${idx+1}?`)) return;
+    sv.payments.splice(idx, 1);
+    sv.saved = sv.payments.reduce((sum,p)=>sum+(p.total||0),0);
+    save(); renderSavings(); showToast('ลบงวดออมทองแล้ว', 'info');
+    return;
+  }
+  const idx = Number(value) - 1;
+  if (!sv.payments[idx]) { alert('ไม่พบงวดที่เลือก'); return; }
+  editSavingsPayment(id, idx);
+}
+
+function deleteSavings(id) {
+  if (!requirePerm('savings', 'ไม่มีสิทธิ์ลบบัญชีออมทอง')) return;
+  const sv = savingsAccounts.find(x=>x.id===id);
+  if (!sv) return;
+  if (!confirm(`⚠️ ลบบัญชีออมทอง?\n\nรหัส: ${sv.id}\nลูกค้า: ${sv.customer}\nยอดออม: ${sv.saved.toLocaleString()} บาท\n\nการลบจะไม่สามารถย้อนกลับได้`)) return;
+  if (window._fbReady) {
+    const docId = sv._docId || sv.id || sv.accountNo;
+    if (docId) window._fb.deleteDoc('savings', docId);
+  }
+  savingsAccounts = savingsAccounts.filter(x=>x.id!==id);
+  save(); renderSavings();
+  showToast(`ลบบัญชี ${id} เรียบร้อย`, 'info');
+}
+
+// ============ SAVINGS SUMMARY CARD (แคปส่ง LINE) ============
+function showSavingsSummary(id, mode) {
+  const sv = savingsAccounts.find(x=>x.id===id);
+  if (!sv) return;
+  const totalDeposit = sv.payments.reduce((a,p)=>a+(p.deposit||0),0);
+  const totalBonus   = sv.payments.reduce((a,p)=>a+(p.bonus||0),0);
+  const lastPay      = sv.payments.length ? sv.payments[sv.payments.length-1] : null;
+  const periodTh     = sv.period==='weekly' ? 'รายสัปดาห์' : 'รายเดือน';
+  const dateStr      = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  const goldPriceStr = (lastPay ? lastPay.goldPrice : spot).toLocaleString();
+  const maxBar = Math.max(sv.saved, 1);
+  const depositPct = Math.round(totalDeposit/maxBar*100);
+  const bonusPct   = Math.round(totalBonus/maxBar*100);
+
+  // payment rows — แค่วันที่ + ฝาก + โบนัส + รวม (ไม่มีราคาทอง)
+  const paymentRows = sv.payments.slice(-5).reverse().map((p,i) => {
+    const d = new Date(p.date).toLocaleDateString('th-TH',{month:'short',day:'numeric'});
+    return `<tr>
+      <td style="padding:8px 10px;font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;">งวดที่ ${sv.payments.length-i} &nbsp; ${d}</td>
+      <td style="padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f0e0e0;">${(p.deposit||0).toLocaleString()}</td>
+      <td style="padding:8px 10px;font-size:13px;text-align:right;color:#B83232;border-bottom:1px solid #f0e0e0;">+${(p.bonus||0).toLocaleString()}</td>
+      <td style="padding:8px 10px;font-size:13px;font-weight:700;text-align:right;border-bottom:1px solid #f0e0e0;">${(p.total||0).toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+
+  const openMsg = mode==='open' ? `<div style="text-align:center;background:#fff5f5;border-radius:10px;padding:14px;margin-bottom:20px;border:1px solid #f5c0c0;">
+    <div style="font-size:15px;font-weight:700;color:#9B1C1C;letter-spacing:0.04em;">เปิดบัญชีสำเร็จ</div>
+    <div style="font-size:12px;color:#888;margin-top:4px;">ยินดีต้อนรับสู่โปรแกรมออมทอง ห้างทองร่ำรวยดี</div>
+  </div>` : '';
+
+  const html = `<div id="savSummaryCard" style="
+      background:#fff;
+      border-radius:16px;overflow:hidden;
+      font-family:'Sarabun',sans-serif;max-width:400px;margin:0 auto;
+      box-shadow:0 8px 32px rgba(0,0,0,0.18);
+      border:1px solid #e8c8c8;">
+
+    <!-- Header bar — แดงเข้ม -->
+    <div style="background:linear-gradient(135deg,#8B0000,#C0392B);padding:20px 22px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:10px;letter-spacing:0.14em;color:rgba(255,255,255,0.6);text-transform:uppercase;margin-bottom:5px;">◈ ห้างทองร่ำรวยดี</div>
+          <div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:0.01em;">บัญชีออมทอง</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px;">${sv.id} · ${periodTh}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);">${dateStr}</div>
+          <div style="font-size:11px;color:rgba(255,220,180,0.85);margin-top:4px;">ราคาทอง ณ วันนี้<br>${goldPriceStr} บาท/บาท</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ชื่อลูกค้า -->
+    <div style="background:#fdf5f5;padding:14px 22px;border-bottom:1px solid #f0dada;">
+      <div style="font-size:10px;color:#aaa;letter-spacing:0.08em;margin-bottom:4px;">ชื่อสมาชิก</div>
+      <div style="font-size:20px;font-weight:700;color:#1a1a1a;">${sv.customer}</div>
+      ${sv.phone?`<div style="font-size:12px;color:#aaa;margin-top:2px;">${sv.phone}</div>`:''}
+    </div>
+
+    <div style="padding:18px 22px;">
+      ${openMsg}
+
+      <!-- ยอดสรุป 3 กล่อง -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;">
+        <div style="background:#fff;border:1px solid #e8d0d0;border-radius:10px;padding:12px 8px;text-align:center;">
+          <div style="font-size:9px;color:#999;margin-bottom:5px;letter-spacing:0.06em;text-transform:uppercase;">ฝากเอง</div>
+          <div style="font-size:18px;font-weight:700;color:#333;">${totalDeposit.toLocaleString()}</div>
+          <div style="font-size:9px;color:#bbb;margin-top:2px;">บาท</div>
+        </div>
+        <div style="background:#fff5f5;border:1px solid #f5c0c0;border-radius:10px;padding:12px 8px;text-align:center;">
+          <div style="font-size:9px;color:#B83232;margin-bottom:5px;letter-spacing:0.06em;text-transform:uppercase;">โบนัส</div>
+          <div style="font-size:18px;font-weight:700;color:#B83232;">+${totalBonus.toLocaleString()}</div>
+          <div style="font-size:9px;color:#caa;margin-top:2px;">บาท</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#8B0000,#C0392B);border-radius:10px;padding:12px 8px;text-align:center;">
+          <div style="font-size:9px;color:rgba(255,255,255,0.65);margin-bottom:5px;letter-spacing:0.06em;text-transform:uppercase;">รวมทั้งหมด</div>
+          <div style="font-size:18px;font-weight:700;color:#fff;">${sv.saved.toLocaleString()}</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.5);margin-top:2px;">บาท</div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div style="margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-bottom:6px;">
+          <span>สัดส่วนยอดออม</span><span>${sv.payments.length} งวด</span>
+        </div>
+        <div style="height:8px;background:#f0e0e0;border-radius:99px;overflow:hidden;display:flex;">
+          <div style="width:${depositPct}%;background:#c0392b;"></div>
+          <div style="width:${bonusPct}%;background:#e08080;"></div>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:6px;font-size:9px;color:#aaa;">
+          <span><span style="display:inline-block;width:8px;height:8px;background:#c0392b;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>ยอดลูกค้า</span>
+          <span><span style="display:inline-block;width:8px;height:8px;background:#e08080;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>โบนัส</span>
+        </div>
+      </div>
+
+      <!-- ตารางประวัติงวด -->
+      ${sv.payments.length ? `<div style="margin-bottom:4px;">
+        <div style="font-size:10px;color:#aaa;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">ประวัติล่าสุด 5 งวด</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#fdf0f0;">
+              <th style="padding:7px 10px;text-align:left;font-size:10px;color:#B83232;font-weight:600;letter-spacing:0.06em;border-bottom:2px solid #f0c0c0;">งวด</th>
+              <th style="padding:7px 10px;text-align:right;font-size:10px;color:#B83232;font-weight:600;letter-spacing:0.06em;border-bottom:2px solid #f0c0c0;">ฝาก</th>
+              <th style="padding:7px 10px;text-align:right;font-size:10px;color:#B83232;font-weight:600;letter-spacing:0.06em;border-bottom:2px solid #f0c0c0;">โบนัส</th>
+              <th style="padding:7px 10px;text-align:right;font-size:10px;color:#B83232;font-weight:600;letter-spacing:0.06em;border-bottom:2px solid #f0c0c0;">รวม</th>
+            </tr>
+          </thead>
+          <tbody>${paymentRows}</tbody>
+        </table>
+      </div>` : `<div style="text-align:center;padding:18px;color:#ccc;font-size:13px;">ยังไม่มีการออมงวดแรก</div>`}
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#fdf5f5;border-top:1px solid #f0dada;padding:12px 22px;text-align:center;">
+      <div style="font-size:10px;color:#C0392B;letter-spacing:0.06em;font-weight:600;">◈ ห้างทองร่ำรวยดี · โปรแกรมออมทอง</div>
+      <div style="font-size:9px;color:#bbb;margin-top:3px;">ข้อมูล ณ ${dateStr}</div>
+    </div>
+  </div>`;
+
+  let overlay = document.getElementById('savSummaryOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'savSummaryOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:400;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:16px;overflow-y:auto;';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `
+    <div style="max-width:420px;width:100%;">${html}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+      <button onclick="document.getElementById('savSummaryOverlay').style.display='none'" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);padding:10px 24px;border-radius:10px;font-family:'Sarabun',sans-serif;font-size:14px;cursor:pointer;">ปิด</button>
+      <button onclick="sendLineSummaryText('${id}')" style="background:#06C755;color:#fff;border:none;padding:10px 24px;border-radius:10px;font-family:'Sarabun',sans-serif;font-size:14px;cursor:pointer;font-weight:700;">ส่งข้อความ LINE</button>
+    </div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.45);text-align:center;">แคปภาพการ์ดนี้ส่งให้ลูกค้า หรือกด "ส่งข้อความ LINE"</div>`;
+  overlay.style.display = 'flex';
+}
+
+function sendLineSummaryText(id) {
+  const sv = savingsAccounts.find(x=>x.id===id);
+  if (!sv) return;
+  const totalDeposit = sv.payments.reduce((a,p)=>a+(p.deposit||0),0);
+  const totalBonus   = sv.payments.reduce((a,p)=>a+(p.bonus||0),0);
+  const lastPay      = sv.payments.length ? sv.payments[sv.payments.length-1] : null;
+  const periodTh     = sv.period==='weekly' ? 'รายสัปดาห์' : 'รายเดือน';
+  const dateStr      = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  const gpStr        = lastPay ? lastPay.goldPrice.toLocaleString() : spot.toLocaleString();
+  const lastBlock    = lastPay ? `\n🟡 งวดล่าสุด: ฝาก ${(lastPay.deposit||0).toLocaleString()} + โบนัส ${(lastPay.bonus||0).toLocaleString()} = ${(lastPay.total||0).toLocaleString()} บาท` : '';
+  const msg =
+`✨ สรุปบัญชีออมทอง ✨
+◈ ห้างทองร่ำรวยดี
+━━━━━━━━━━━━━━━
+👤 ${sv.customer}
+🏷 รหัส: ${sv.id}  ·  ${periodTh}
+📅 ข้อมูล ณ ${dateStr}
+💛 ราคาทอง: ${gpStr} บ./บาท
+━━━━━━━━━━━━━━━
+💰 ฝากเอง:         ${totalDeposit.toLocaleString()} บาท
+🎁 โบนัสสะสม:  +${totalBonus.toLocaleString()} บาท
+⭐ รวมทั้งหมด:  ${sv.saved.toLocaleString()} บาท
+📦 จำนวน: ${sv.payments.length} งวด${lastBlock}
+━━━━━━━━━━━━━━━
+🙏 ขอบคุณที่ไว้วางใจ
+ห้างทองร่ำรวยดี`;
+  window.open(`https://line.me/R/msg/text/?${encodeURIComponent(msg)}`, '_blank');
+}
+
+function sendLineSum(id) { showSavingsSummary(id,'view'); }
+
+function closeSavings(id) {
+  if (!requirePerm('savings', 'ไม่มีสิทธิ์ปิดบัญชีออมทอง')) return;
+  const sv = savingsAccounts.find(x=>x.id===id);
+  if (!sv) return;
+  if (!confirm(`ปิดบัญชีออมทอง ${sv.id}\nลูกค้า: ${sv.customer}\nยอดออมรวม: ${sv.saved.toLocaleString()} บาท\n\nยืนยันรับสินค้าและปิดบัญชี?`)) return;
+  const txnNo = nextTxnNo();
+  transactions.push({ type:'savings_close', txnNo, productName:'ออมทอง-'+sv.id, qty:1, total:sv.saved, customer:sv.customer, savingsId:sv.id, date:new Date().toISOString() });
+  sv.status = 'closed';
+  sv.closedDate = new Date().toISOString();
+  save(); renderSavings(); renderDashboard();
+  showToast(`✓ ปิดบัญชี ${sv.id} เรียบร้อย`, 'success');
+}
+
+// ============ INIT ============
+seedIfEmpty();
+checkSession();
+renderDashboard();
+initReportDates();
+document.getElementById('todayDate').textContent = new Date().toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+</script>
+</body>
+</html>
