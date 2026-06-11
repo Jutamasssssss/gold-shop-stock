@@ -231,6 +231,15 @@
   .crm-name { font-size:14px; font-weight:600; }
   .crm-meta { font-size:12px; color:var(--text3); margin-top:2px; }
   .crm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+  .contract-status { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:99px; white-space:nowrap; }
+  .contract-active { background:var(--blue-bg); color:var(--blue); }
+  .contract-due { background:var(--amber-bg); color:var(--amber); }
+  .contract-overdue { background:var(--red-bg); color:var(--red); }
+  .contract-closed { background:var(--green-bg); color:var(--green); }
+  .contract-void { background:var(--surface2); color:var(--text3); }
+  .contract-progress { min-width:120px; }
+  .contract-progress-track { height:6px; background:var(--border); border-radius:99px; overflow:hidden; margin-top:4px; }
+  .contract-progress-fill { height:100%; background:var(--gold); border-radius:99px; }
   .ops-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:20px; }
   .ops-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; box-shadow:0 8px 24px rgba(35,28,16,0.04); }
   .ops-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
@@ -356,6 +365,9 @@
       <div class="nav-item" onclick="showPage('savings')">
         <span class="nav-icon">◎</span> ออมทอง
       </div>
+      <div class="nav-item" onclick="showPage('installment')">
+        <span class="nav-icon">▣</span> ผ่อนทอง
+      </div>
       <div class="nav-item" onclick="showPage('crm')">
         <span class="nav-icon">◑</span> CRM ลูกค้า
       </div>
@@ -391,6 +403,7 @@
         <div class="ops-card"><div class="ops-title">ขายหน้าร้าน / LINE OA</div><div class="ops-meta">ตัดสต็อก FIFO, บันทึกช่องทาง, ผูกลูกค้าด้วยเบอร์</div></div>
         <div class="ops-card"><div class="ops-title">จำนำ / ขายฝาก</div><div class="ops-meta">ต่อดอก, ไถ่ถอน, เตือนครบกำหนดล่วงหน้า 7 วัน</div></div>
         <div class="ops-card"><div class="ops-title">ออมทอง</div><div class="ops-meta">บันทึกงวด, คำนวณน้ำหนักทอง, แสดงใน LINE สมาชิก</div></div>
+        <div class="ops-card"><div class="ops-title">ผ่อนทอง</div><div class="ops-meta">ทำสัญญา, กำหนดงวด, รับชำระ, ติดตามค้างชำระ</div></div>
         <div class="ops-card"><div class="ops-title">P&L ร้านทอง</div><div class="ops-meta">รวมยอดขาย, ดอกเบี้ยไถ่ถอน, กำไร, margin และ export CSV</div></div>
       </div>
 
@@ -537,6 +550,9 @@
       <div class="page-header">
         <div class="page-title">ประวัติรายการ</div>
       </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <input type="text" id="historySearch" placeholder="ค้นหาชื่อลูกค้า / เบอร์ / ประเภทสินค้า / น้ำหนัก / รหัส..." oninput="renderHistory()" style="max-width:520px;">
+      </div>
       <div class="tabs">
         <div class="tab active" onclick="filterHistory('all',this)">ทั้งหมด</div>
         <div class="tab" onclick="filterHistory('sale',this)">ขาย</div>
@@ -659,10 +675,37 @@
       </div>
     </div>
 
+    <!-- Installment Gold -->
+    <div class="page" id="page-installment">
+      <div class="page-header">
+        <div><div class="page-title">ระบบผ่อนทอง</div><div class="page-sub">ทำสัญญาผ่อนทอง กำหนดงวด รับชำระ และติดตามยอดค้าง</div></div>
+        <button class="btn btn-primary" onclick="openInstallmentModal()">+ ทำสัญญาผ่อนทอง</button>
+      </div>
+      <div class="metric-grid" id="installmentMetrics" style="margin-bottom:18px;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <input type="text" id="installmentSearch" placeholder="ค้นหาสัญญา / ลูกค้า / เบอร์..." style="width:260px;" oninput="renderInstallments()">
+        <select id="installmentStatusFilter" onchange="renderInstallments()" style="width:170px;">
+          <option value="">ทุกสถานะ</option>
+          <option value="active">กำลังผ่อน</option>
+          <option value="due">ใกล้ครบกำหนด</option>
+          <option value="overdue">ค้างชำระ</option>
+          <option value="closed">ปิดสัญญา</option>
+          <option value="void">ยกเลิก</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>เลขสัญญา</th><th>ลูกค้า / สินค้า</th><th>ราคาสัญญา</th><th>แผนผ่อน</th><th>จ่ายแล้ว</th><th>คงเหลือ</th><th>งวดถัดไป</th><th>สถานะ</th><th></th></tr></thead>
+          <tbody id="installmentTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- CRM -->
     <div class="page" id="page-crm">
       <div class="page-header">
         <div><div class="page-title">CRM ลูกค้า</div><div class="page-sub">ประวัติซื้อขาย จำนำ ออมทอง</div></div>
+        <button class="btn btn-primary" onclick="openCustomerVisitModal()">+ บันทึกการติดต่อ</button>
       </div>
       <input type="text" id="crmSearch" placeholder="ค้นหาชื่อลูกค้า..." style="width:260px;margin-bottom:16px;" oninput="renderCRM()">
       <div class="crm-grid" id="crmGrid"></div>
@@ -729,11 +772,15 @@
         <input type="text" id="addTray" placeholder="เช่น ถาดสร้อย-01">
       </div>
       <div class="form-group">
-        <label>ราคารับเข้า (ต้นทุน)</label>
+        <label>ต้นทุนทอง</label>
         <input type="number" id="addCost" placeholder="69,702" oninput="calcAddPrice()">
       </div>
       <div class="form-group">
-        <label>ค่ากำเหน็จ / ค่าทำ</label>
+        <label>ต้นทุนค่ากำเหน็จ</label>
+        <input type="number" id="addLaborCost" value="0" oninput="calcAddPrice()">
+      </div>
+      <div class="form-group">
+        <label>ค่ากำเหน็จขายออก</label>
         <input type="number" id="addFee" value="1000" oninput="calcAddPrice()">
       </div>
       <div class="form-group">
@@ -769,8 +816,12 @@
         <input type="text" id="lotProductName" disabled>
       </div>
       <div class="form-group">
-        <label>ต้นทุนล็อต</label>
+        <label>ต้นทุนทอง</label>
         <input type="number" id="lotCost">
+      </div>
+      <div class="form-group">
+        <label>ต้นทุนค่ากำเหน็จ</label>
+        <input type="number" id="lotLaborCost" value="0">
       </div>
       <div class="form-group">
         <label>จำนวน</label>
@@ -922,6 +973,7 @@
       <div class="form-group">
         <label>งวดละ</label>
         <select id="savPeriod">
+          <option value="daily">รายวัน</option>
           <option value="weekly">รายสัปดาห์</option>
           <option value="monthly" selected>รายเดือน</option>
         </select>
@@ -937,6 +989,72 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('savingsModal')">ยกเลิก</button>
       <button class="btn btn-primary" id="savingsSaveBtn" onclick="confirmSavings()">✦ เปิดบัญชี</button>
+    </div>
+  </div>
+</div>
+
+<!-- Installment Contract Modal -->
+<div class="modal-overlay" id="installmentModal">
+  <div class="modal" style="width:720px;">
+    <h2 id="installmentModalTitle">ทำสัญญาผ่อนทอง</h2>
+    <input type="hidden" id="instEditId">
+    <div class="form-grid">
+      <div class="form-group full"><label>รายการทอง / สินค้า</label><input type="text" id="instItem" placeholder="เช่น สร้อยคอ ลายโซ่ 1 บาท"></div>
+      <div class="form-group"><label>ราคาทองขายออก ณ วันทำสัญญา</label><input type="number" id="instGoldPrice" oninput="calcInstallment()"></div>
+      <div class="form-group"><label>บวกกำไร / ค่ากำเหน็จ</label><input type="number" id="instProfitAdd" value="0" oninput="calcInstallment()"></div>
+      <div class="form-group"><label>ราคาสุทธิที่ตกลง</label><input type="number" id="instFinalPrice" oninput="calcInstallment(true)"></div>
+      <div class="form-group"><label>เงินดาวน์ / ชำระวันแรก</label><input type="number" id="instDownPayment" value="0" min="0" oninput="calcInstallment()"></div>
+      <div class="form-group full"><label>ชื่อลูกค้า</label><input type="text" id="instCustomer" placeholder="ชื่อ-นามสกุล"></div>
+      <div class="form-group full"><label>ที่อยู่ลูกค้า</label><textarea id="instAddress" rows="2" placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด"></textarea></div>
+      <div class="form-group"><label>เบอร์โทรศัพท์</label><input type="tel" id="instPhone" placeholder="08x-xxx-xxxx" inputmode="numeric"></div>
+      <div class="form-group"><label>เลขบัตรประชาชน</label><input type="text" id="instIdCard" placeholder="x-xxxx-xxxxx-xx-x" maxlength="17"></div>
+      <div class="form-group">
+        <label>รูปแบบผ่อน</label>
+        <select id="instPeriodType" onchange="calcInstallment()">
+          <option value="daily">รายวัน</option>
+          <option value="weekly">รายสัปดาห์</option>
+          <option value="monthly" selected>รายเดือน</option>
+        </select>
+      </div>
+      <div class="form-group"><label>จำนวนงวด</label><input type="number" id="instPeriods" value="6" min="1" oninput="calcInstallment()"></div>
+      <div class="form-group"><label>งวดละ (บาท)</label><input type="number" id="instAmountPerPeriod" oninput="calcInstallment(false, true)"></div>
+      <div class="form-group"><label>วันเริ่มสัญญา</label><input type="date" id="instStartDate" onchange="calcInstallment()"></div>
+      <div class="form-group"><label>วันจบสัญญา</label><input type="date" id="instEndDate"></div>
+      <div class="form-group"><label>งวดแรกครบกำหนด</label><input type="date" id="instFirstDueDate"></div>
+      <div class="form-group">
+        <label>สถานะ</label>
+        <select id="instStatus">
+          <option value="active">กำลังผ่อน</option>
+          <option value="closed">ปิดสัญญา</option>
+          <option value="void">ยกเลิก</option>
+        </select>
+      </div>
+    </div>
+    <div class="price-preview" id="installmentPreview" style="margin-top:12px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('installmentModal')">ยกเลิก</button>
+      <button class="btn btn-primary" id="installmentSaveBtn" onclick="confirmInstallment()">บันทึกสัญญา</button>
+    </div>
+  </div>
+</div>
+
+<!-- Installment Payment Modal -->
+<div class="modal-overlay" id="installmentPayModal">
+  <div class="modal" style="max-width:480px;">
+    <h2 id="installmentPayTitle">รับชำระค่างวด</h2>
+    <input type="hidden" id="instPayId">
+    <input type="hidden" id="instPayIndex">
+    <div id="instPayInfo" style="font-size:13px;color:var(--text2);background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:16px;"></div>
+    <div class="form-grid">
+      <div class="form-group"><label>จำนวนเงินที่รับ</label><input type="number" id="instPayAmount"></div>
+      <div class="form-group"><label>วันที่ชำระ</label><input type="date" id="instPayDate"></div>
+      <div class="form-group"><label>ช่องทางชำระ</label><select id="instPayChannel"><option>เงินสด</option><option>โอน</option><option>บัตร</option><option>อื่นๆ</option></select></div>
+      <div class="form-group"><label>เลขอ้างอิง</label><input type="text" id="instPayRef" placeholder="เลขสลิป / หมายเหตุ"></div>
+      <div class="form-group full"><label>หมายเหตุ</label><textarea id="instPayNote" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('installmentPayModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="confirmInstallmentPayment()">บันทึกชำระ</button>
     </div>
   </div>
 </div>
@@ -960,6 +1078,7 @@
           <option value="pawn_redeem">ไถ่ถอนจำนำ</option>
           <option value="savings_deposit">ฝากออมทอง</option>
           <option value="savings_close">ปิดบัญชีออมทอง</option>
+          <option value="installment_payment">ชำระผ่อนทอง</option>
         </select>
       </div>
       <div class="form-group full">
@@ -1032,6 +1151,49 @@
   </div>
 </div>
 
+<!-- Customer Visit / Contact Modal -->
+<div class="modal-overlay" id="customerVisitModal">
+  <div class="modal" style="max-width:560px;">
+    <h2>บันทึกประวัติลูกค้า</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>ชื่อ-นามสกุลลูกค้า</label>
+        <input type="text" id="visitCustomerName" placeholder="ชื่อ-นามสกุล">
+      </div>
+      <div class="form-group">
+        <label>เบอร์ติดต่อ</label>
+        <input type="tel" id="visitCustomerPhone" placeholder="08x-xxx-xxxx" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label>วันที่มาติดต่อ / ใช้บริการ</label>
+        <input type="date" id="visitDate">
+      </div>
+      <div class="form-group full">
+        <label>สาเหตุที่มาติดต่อ</label>
+        <select id="visitReason">
+          <option>ซื้อทอง</option>
+          <option>ขายทอง</option>
+          <option>รับสินค้า / เพิ่มสต็อก</option>
+          <option>จำนำ / ขายฝาก</option>
+          <option>ออมทอง</option>
+          <option>ผ่อนทอง</option>
+          <option>สอบถามราคา</option>
+          <option>บริการหลังการขาย</option>
+          <option>อื่นๆ</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>รายละเอียด / หมายเหตุ</label>
+        <textarea id="visitNote" rows="3" placeholder="เช่น มาสอบถามสร้อย 1 บาท นัดรับสินค้า โทรกลับ ฯลฯ"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('customerVisitModal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="confirmCustomerVisit()">บันทึกประวัติ</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 // ============================================================
 // FIREBASE SETUP — ใส่ config ของคุณตรงนี้ (เปลี่ยนแค่ค่าใน {} นี้)
@@ -1082,6 +1244,7 @@ let products = [];
 let transactions = [];
 let pawns = [];
 let savingsAccounts = [];
+let installmentContracts = [];
 let customers = [];
 let selectedSaleProduct = null;
 let historyFilter = 'all';
@@ -1097,9 +1260,9 @@ function nextTxnNo() {
 // ============ ROLE PERMISSION ============
 // admin: ทุกอย่าง | cashier: ขาย+รับซื้อ+ออม+จำนำ (ไม่มีลบ/แก้สต็อก/report) | viewer: ดูอย่างเดียว
 const ROLE_PERMS = {
-  admin:   { addProduct:true,  editProduct:true,  deleteProduct:true,  addLot:true,  editLot:true,  editTransaction:true,  editCustomer:true,  sell:true,  buy:true,  pawn:true,  savings:true,  report:true,  viewStock:true },
-  cashier: { addProduct:false, editProduct:false, deleteProduct:false, addLot:false, editLot:false, editTransaction:true,  editCustomer:true,  sell:true,  buy:true,  pawn:true,  savings:true,  report:false, viewStock:true },
-  viewer:  { addProduct:false, editProduct:false, deleteProduct:false, addLot:false, editLot:false, editTransaction:false, editCustomer:false, sell:false, buy:false, pawn:false, savings:false, report:true,  viewStock:true },
+  admin:   { addProduct:true,  editProduct:true,  deleteProduct:true,  addLot:true,  editLot:true,  editTransaction:true,  editCustomer:true,  sell:true,  buy:true,  pawn:true,  savings:true,  installment:true,  report:true,  viewStock:true },
+  cashier: { addProduct:false, editProduct:false, deleteProduct:false, addLot:false, editLot:false, editTransaction:true,  editCustomer:true,  sell:true,  buy:true,  pawn:true,  savings:true,  installment:true,  report:false, viewStock:true },
+  viewer:  { addProduct:false, editProduct:false, deleteProduct:false, addLot:false, editLot:false, editTransaction:false, editCustomer:false, sell:false, buy:false, pawn:false, savings:false, installment:false, report:true,  viewStock:true },
 };
 
 function can(action) {
@@ -1226,6 +1389,7 @@ function save() {
   localStorage.setItem('gd_transactions', JSON.stringify(transactions));
   localStorage.setItem('gd_pawns', JSON.stringify(pawns));
   localStorage.setItem('gd_savings', JSON.stringify(savingsAccounts));
+  localStorage.setItem('gd_installments', JSON.stringify(installmentContracts));
   localStorage.setItem('gd_customers', JSON.stringify(customers));
 
   if (!window._fbReady) return;
@@ -1246,6 +1410,13 @@ function save() {
     if (!s.id) s.id = id;
     if (!s._docId) s._docId = id;
     window._fb.saveDoc('savings', s._docId, s);
+  });
+  installmentContracts.forEach(c => {
+    const id = c._docId || c.id || c.contractNo || ('inst_' + Date.now());
+    if (!c.id) c.id = id;
+    if (!c.contractNo) c.contractNo = id;
+    if (!c._docId) c._docId = id;
+    window._fb.saveDoc('installments', c._docId, c);
   });
   transactions.forEach(t => {
     const id = t._docId || t.id || t.txnNo || ('txn_' + Date.now());
@@ -1287,6 +1458,12 @@ function setupRealtimeSync() {
     if (typeof renderSavings === 'function') renderSavings();
   });
 
+  window._fb.listen('installments', (items) => {
+    installmentContracts = items;
+    if (typeof renderInstallments === 'function') renderInstallments();
+    if (typeof renderDashboard === 'function') renderDashboard();
+  });
+
   window._fb.listen('customers', (items) => {
     customers = items;
     if (typeof renderCRM === 'function') renderCRM();
@@ -1316,6 +1493,7 @@ function showPage(id) {
   if (id==='barcode') renderBarcodeList();
   if (id==='pawn') renderPawn();
   if (id==='savings') renderSavings();
+  if (id==='installment') renderInstallments();
   if (id==='crm') renderCRM();
   if (id==='sell') { setTimeout(()=>document.getElementById('barcodeInput').focus(),100); }
   if (id==='settings') renderSettings();
@@ -1468,6 +1646,7 @@ function renderSettings() {
           • ธุรกรรม: <b id="cnt-trans">0</b> รายการ<br>
           • ตั๋วจำนำ: <b id="cnt-pawns">0</b> รายการ<br>
           • บัญชีออม: <b id="cnt-savings">0</b> รายการ<br>
+          • สัญญาผ่อนทอง: <b id="cnt-installments">0</b> รายการ<br>
           • ลูกค้า: <b id="cnt-customers">0</b> ราย<br>
           • Backup ล่าสุด: <b id="lastBackup">ยังไม่เคย</b>
         </div>
@@ -1512,6 +1691,7 @@ function updateBackupStats() {
   document.getElementById('cnt-trans').textContent = (transactions||[]).length;
   document.getElementById('cnt-pawns').textContent = (pawns||[]).length;
   document.getElementById('cnt-savings').textContent = (savingsAccounts||[]).length;
+  document.getElementById('cnt-installments').textContent = (installmentContracts||[]).length;
   document.getElementById('cnt-customers').textContent = (customers||[]).length;
   document.getElementById('lastBackup').textContent = last
     ? new Date(last).toLocaleDateString('th-TH', {day:'2-digit', month:'short', year:'numeric'})
@@ -1527,6 +1707,7 @@ function downloadBackup() {
     transactions: transactions || [],
     pawns: pawns || [],
     savingsAccounts: savingsAccounts || [],
+    installmentContracts: installmentContracts || [],
     customers: customers || [],
     spot: spot
   };
@@ -1555,6 +1736,7 @@ function restoreBackup(e) {
       if (data.transactions) transactions = data.transactions;
       if (data.pawns) pawns = data.pawns;
       if (data.savingsAccounts) savingsAccounts = data.savingsAccounts;
+      if (data.installmentContracts) installmentContracts = data.installmentContracts;
       if (data.customers) customers = data.customers;
       if (data.shopSettings) saveShopSettings(data.shopSettings);
       save();
@@ -1676,6 +1858,8 @@ function renderDashboard() {
 
   const totalStock = products.reduce((s,p) => s + p.lots.reduce((a,l)=>a+l.qty,0), 0);
   const totalValue = products.reduce((s,p) => s + p.lots.reduce((a,l)=>a+l.cost*l.qty,0), 0);
+  const activeInstallments = installmentContracts.filter(c => ['active','due','overdue'].includes(getInstallmentRuntimeStatus(c)));
+  const installmentReceivable = activeInstallments.reduce((s,c)=>s+getInstallmentBalance(c),0);
 
   document.getElementById('dashMetrics').innerHTML = `
     <div class="metric gold"><div class="metric-label">Spot วันนี้</div><div class="metric-value">${spot.toLocaleString()}</div><div class="metric-sub">บาท/บาท</div></div>
@@ -1683,6 +1867,7 @@ function renderDashboard() {
     <div class="metric green"><div class="metric-label">กำไร (วันนี้)</div><div class="metric-value">${todayProfit.toLocaleString()}</div><div class="metric-sub">บาท</div></div>
     <div class="metric"><div class="metric-label">ชิ้นในสต็อก</div><div class="metric-value">${totalStock}</div><div class="metric-sub">ชิ้น</div></div>
     <div class="metric"><div class="metric-label">มูลค่าสต็อก</div><div class="metric-value">${(totalValue/1000).toFixed(0)}K</div><div class="metric-sub">บาท</div></div>
+    <div class="metric gold"><div class="metric-label">ยอดผ่อนค้างรับ</div><div class="metric-value">${Math.round(installmentReceivable/1000).toLocaleString()}K</div><div class="metric-sub">${activeInstallments.length} สัญญา</div></div>
   `;
 
   // Low stock
@@ -1831,6 +2016,12 @@ function getAvgCost(p) {
   if (!totalUnits) return 0;
   return p.lots.reduce((a,l)=>a+l.cost*l.qty,0) / totalUnits;
 }
+function getAvgLotField(p, field) {
+  const lots = Array.isArray(p.lots) ? p.lots : [];
+  const totalUnits = lots.reduce((a,l)=>a+(l.qty||0),0);
+  if (!totalUnits) return 0;
+  return lots.reduce((a,l)=>a+((parseFloat(l[field])||0)*(l.qty||0)),0) / totalUnits;
+}
 
 function renderStock() {
   const search = document.getElementById('stockSearch').value.toLowerCase();
@@ -1922,6 +2113,7 @@ function openAddModal() {
   document.getElementById('addCode').value = '';
   document.getElementById('addName').value = '';
   document.getElementById('addCost').value = Math.round(goldCost('g0.3'));
+  document.getElementById('addLaborCost').value = 0;
   document.getElementById('addFee').value = 1000;
   document.getElementById('addQty').value = 1;
   calcAddPrice();
@@ -1942,7 +2134,10 @@ function editProduct(code) {
   document.getElementById('addName').value = p.name || '';
   document.getElementById('addWeight').value = String(p.weight ?? '4');
   document.getElementById('addTray').value = p.tray || '';
-  document.getElementById('addCost').value = Math.round(getAvgCost(p) || goldCost(p.weight || 4));
+  const avgLaborCost = getAvgLotField(p, 'laborCost') || parseFloat(p.laborCost) || 0;
+  const avgGoldCost = getAvgLotField(p, 'goldCost') || Math.max(0, (getAvgCost(p) || goldCost(p.weight || 4)) - avgLaborCost);
+  document.getElementById('addCost').value = Math.round(avgGoldCost);
+  document.getElementById('addLaborCost').value = Math.round(avgLaborCost);
   document.getElementById('addFee').value = p.fee ?? 1000;
   document.getElementById('addQty').value = getProductQty(p);
   document.getElementById('addQty').disabled = true;
@@ -1961,14 +2156,18 @@ function autoCode() {
 function calcAddPrice() {
   const w = document.getElementById('addWeight').value;
   const wVal = isNaN(w) ? w : parseFloat(w);
-  const cost = parseFloat(document.getElementById('addCost').value) || goldCost(wVal);
+  const goldBaseCost = parseFloat(document.getElementById('addCost').value) || goldCost(wVal);
+  const laborCost = parseFloat(document.getElementById('addLaborCost').value) || 0;
+  const cost = goldBaseCost + laborCost;
   const fee = parseFloat(document.getElementById('addFee').value) || 1000;
   const qty = parseInt(document.getElementById('addQty').value) || 1;
   const sp = sellPrice(cost, fee);
   const profit = sp - cost - fee;
   document.getElementById('addPreview').innerHTML = `
-    <div class="row"><span>ต้นทุนทอง</span><span>${Math.round(cost).toLocaleString()} บาท</span></div>
-    <div class="row"><span>ค่ากำเหน็จ</span><span>${fee.toLocaleString()} บาท</span></div>
+    <div class="row"><span>ต้นทุนทอง</span><span>${Math.round(goldBaseCost).toLocaleString()} บาท</span></div>
+    <div class="row"><span>ต้นทุนค่ากำเหน็จ</span><span>${Math.round(laborCost).toLocaleString()} บาท</span></div>
+    <div class="row"><span>ต้นทุนรวม</span><span>${Math.round(cost).toLocaleString()} บาท</span></div>
+    <div class="row"><span>ค่ากำเหน็จขายออก</span><span>${fee.toLocaleString()} บาท</span></div>
     <div class="row"><span>กำไรต่อชิ้น</span><span style="color:var(--green);">${Math.round(profit).toLocaleString()} บาท</span></div>
     <div class="row total"><span>ราคาขาย</span><span>${sp.toLocaleString()} บาท</span></div>
     <div class="row"><span style="font-size:11px;color:var(--amber);">ต้นทุนรวม ${qty} ชิ้น</span><span style="font-size:11px;color:var(--amber);">${(cost*qty).toLocaleString()} บาท</span></div>
@@ -1984,11 +2183,13 @@ function addProduct() {
   const weightRaw = document.getElementById('addWeight').value;
   const weight = isNaN(weightRaw) ? weightRaw : parseFloat(weightRaw);
   const tray = document.getElementById('addTray').value.trim();
-  const cost = parseFloat(document.getElementById('addCost').value);
+  const goldBaseCost = parseFloat(document.getElementById('addCost').value);
+  const laborCost = parseFloat(document.getElementById('addLaborCost').value)||0;
+  const cost = goldBaseCost + laborCost;
   const fee = parseFloat(document.getElementById('addFee').value);
   const qty = parseInt(document.getElementById('addQty').value);
   const source = document.getElementById('addSource').value;
-  if (!code||!name||!cost) { alert('กรุณากรอกข้อมูลให้ครบค่ะ'); return; }
+  if (!code||!name||!goldBaseCost) { alert('กรุณากรอกข้อมูลให้ครบค่ะ'); return; }
 
   if (editCode) {
     const p = products.find(x => x.code === originalCode);
@@ -1997,7 +2198,7 @@ function addProduct() {
       alert('รหัสสินค้านี้ถูกใช้แล้ว');
       return;
     }
-    Object.assign(p, { code, name, type, weight, tray, fee });
+    Object.assign(p, { code, name, type, weight, tray, fee, laborCost });
     transactions.forEach(t => {
       if (t.productCode === originalCode) t.productCode = code;
       if (t.productName && originalCode === editCode && t.productCode === code) t.productName = name;
@@ -2009,15 +2210,16 @@ function addProduct() {
   }
   
   const existing = products.find(p=>p.code===code);
-  const lot = { cost, qty, date: new Date().toISOString(), source };
+  const lot = { cost, goldCost: goldBaseCost, laborCost, qty, date: new Date().toISOString(), source };
   if (existing) {
     existing.lots.push(lot);
     existing.fee = fee;
+    existing.laborCost = laborCost;
     existing.tray = tray || existing.tray;
   } else {
-    products.push({ code, name, type, weight, tray, fee, lots:[lot] });
+    products.push({ code, name, type, weight, tray, fee, laborCost, lots:[lot] });
   }
-  transactions.push({ type:'buy', productCode:code, productName:name, cost, qty, total:cost*qty, date:new Date().toISOString(), source });
+  transactions.push({ type:'buy', productCode:code, productName:name, cost, goldCost:goldBaseCost, laborCost, fee, qty, total:cost*qty, productType:type, productWeight:weight, weightLabel:WEIGHT_LABELS[weight]||weight, date:new Date().toISOString(), source });
   save(); closeModal('addModal'); renderStock(); renderDashboard();
 }
 
@@ -2169,6 +2371,10 @@ function confirmSale() {
     txnNo,
     productCode:p.code,
     productName:p.name,
+    productType:p.type,
+    productTypeLabel:TYPE_LABELS[p.type]||p.type,
+    productWeight:p.weight,
+    weightLabel:WEIGHT_LABELS[p.weight]||p.weight,
     qty,
     cost:avgCost,
     total,
@@ -2208,24 +2414,49 @@ function filterHistory(f, el) {
   renderHistory();
 }
 
+function transactionSearchText(t) {
+  const p = t.productCode ? products.find(x=>x.code===t.productCode) : null;
+  const productType = t.productType || p?.type || '';
+  const typeLabel = t.productTypeLabel || TYPE_LABELS[productType] || productType;
+  const productWeight = t.productWeight ?? p?.weight ?? '';
+  const weightLabel = t.weightLabel || WEIGHT_LABELS[productWeight] || productWeight;
+  return [
+    t.txnNo, t.productCode, t.productName, t.customer, t.customerName,
+    t.customerPhone, t.phone, t.channel, t.source, productType, typeLabel,
+    productWeight, weightLabel
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
 function renderHistory() {
+  const q = (document.getElementById('historySearch')?.value || '').trim().toLowerCase();
   const list = [...transactions].reverse();
-  const filtered = list.filter(t => historyFilter==='all' || t.type===historyFilter || (historyFilter==='buy' && t.type==='buy_from_customer'));
+  const filtered = list.filter(t => {
+    const matchType = historyFilter==='all' || t.type===historyFilter || (historyFilter==='buy' && t.type==='buy_from_customer');
+    const matchSearch = !q || transactionSearchText(t).includes(q);
+    return matchType && matchSearch;
+  });
   const el = document.getElementById('historyList');
   if (!filtered.length) { el.innerHTML = '<div class="empty"><div class="empty-text">ยังไม่มีรายการ</div></div>'; return; }
   el.innerHTML = filtered.slice(0,80).map(t => {
     const txnKey = t.id || t.txnNo || encodeURIComponent(t.date || '');
-    const isSale = t.type==='sale';
-    const icon = isSale ? '⬆' : '⬇';
-    const label = isSale ? 'ขาย' : (t.type==='buy_from_customer' ? 'รับซื้อ' : 'รับเข้า');
+    const isSale = t.type==='sale' || t.type==='installment_payment';
+    const icon = t.type==='installment_payment' ? '▣' : (isSale ? '⬆' : '⬇');
+    const label = t.type==='installment_payment' ? 'ชำระผ่อนทอง' : (t.type==='sale' ? 'ขาย' : (t.type==='buy_from_customer' ? 'รับซื้อ' : 'รับเข้า'));
     const amount = t.total;
     const d = new Date(t.date);
     const ds = d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const p = t.productCode ? products.find(x=>x.code===t.productCode) : null;
+    const productType = t.productType || p?.type || '';
+    const typeLabel = t.productTypeLabel || TYPE_LABELS[productType] || productType;
+    const productWeight = t.productWeight ?? p?.weight ?? '';
+    const weightLabel = t.weightLabel || WEIGHT_LABELS[productWeight] || productWeight;
+    const customerText = [t.customer || t.customerName, t.customerPhone || t.phone].filter(Boolean).join(' / ');
+    const detailParts = [label, ds, customerText, typeLabel, weightLabel, t.channel || t.source].filter(Boolean);
     return `<div class="tx-row">
       <div class="tx-icon ${isSale?'sale':'buy'}">${icon}</div>
       <div class="tx-meta">
         <div class="tx-name">${t.productName||''} ${t.qty>1?'× '+t.qty:''} ${t.txnNo?`<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:4px;color:var(--text3);">${t.txnNo}</span>`:''}</div>
-        <div class="tx-date">${label} · ${ds}${t.customer?' · '+t.customer:''}${t.channel?' · '+t.channel:''}</div>
+        <div class="tx-date">${detailParts.join(' · ')}</div>
       </div>
       <div class="tx-amount ${isSale?'sale':'buy'}">${isSale?'+':'-'}${amount.toLocaleString()}</div>
       ${can('editTransaction') ? `<button class="btn btn-ghost btn-sm" onclick="editTransaction('${txnKey}')" style="margin-left:8px;">แก้ไข</button>` : ''}
@@ -2349,7 +2580,10 @@ function openLotModal(code, index='') {
   document.getElementById('lotProductCode').value = code;
   document.getElementById('lotIndex').value = index;
   document.getElementById('lotProductName').value = `${p.name} (${p.code})`;
-  document.getElementById('lotCost').value = lot ? lot.cost : Math.round(getAvgCost(p) || goldCost(p.weight || 4));
+  const lotLaborCost = lot ? (parseFloat(lot.laborCost)||0) : (parseFloat(p.laborCost)||0);
+  const lotGoldCost = lot ? (parseFloat(lot.goldCost)||Math.max(0, (parseFloat(lot.cost)||0) - lotLaborCost)) : Math.round(getAvgLotField(p, 'goldCost') || Math.max(0, (getAvgCost(p) || goldCost(p.weight || 4)) - lotLaborCost));
+  document.getElementById('lotCost').value = Math.round(lotGoldCost);
+  document.getElementById('lotLaborCost').value = Math.round(lotLaborCost);
   document.getElementById('lotQty').value = lot ? lot.qty : 1;
   document.getElementById('lotDate').value = isoToDateInput(lot?.date);
   document.getElementById('lotSource').value = lot ? (lot.source || '') : 'เพิ่มล็อต';
@@ -2362,7 +2596,9 @@ function showLots(code) {
   if (!p) return;
   const rows = (p.lots || []).map((lot, i) => {
     const d = new Date(lot.date || Date.now()).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    return `${i+1}. ${Math.round(lot.cost||0).toLocaleString()} บาท × ${lot.qty||0} ชิ้น · ${d} · ${lot.source || '-'}`;
+    const labor = parseFloat(lot.laborCost)||0;
+    const gold = parseFloat(lot.goldCost)||Math.max(0, (parseFloat(lot.cost)||0) - labor);
+    return `${i+1}. ทอง ${Math.round(gold).toLocaleString()} + กำเหน็จต้นทุน ${Math.round(labor).toLocaleString()} = ${Math.round(lot.cost||0).toLocaleString()} บาท × ${lot.qty||0} ชิ้น · ${d} · ${lot.source || '-'}`;
   }).join('\n');
   const choice = prompt(`ล็อตของ ${p.name}\n\n${rows || 'ยังไม่มีล็อต'}\n\nพิมพ์เลขล็อตที่ต้องการแก้ไข หรือเว้นว่างเพื่อเพิ่มล็อตใหม่`);
   if (choice === null) return;
@@ -2376,17 +2612,21 @@ function saveLot() {
   const p = products.find(x=>x.code===code);
   if (!p) return;
   const indexRaw = document.getElementById('lotIndex').value;
-  const cost = parseFloat(document.getElementById('lotCost').value);
+  const goldBaseCost = parseFloat(document.getElementById('lotCost').value);
+  const laborCost = parseFloat(document.getElementById('lotLaborCost').value)||0;
+  const cost = goldBaseCost + laborCost;
   const qty = parseInt(document.getElementById('lotQty').value);
   const date = dateInputToIso(document.getElementById('lotDate').value);
   const source = document.getElementById('lotSource').value.trim() || 'เพิ่มล็อต';
-  if (!cost || qty < 0 || Number.isNaN(qty)) { alert('กรุณากรอกต้นทุนและจำนวนให้ถูกต้อง'); return; }
+  if (!goldBaseCost || qty < 0 || Number.isNaN(qty)) { alert('กรุณากรอกต้นทุนและจำนวนให้ถูกต้อง'); return; }
   if (!Array.isArray(p.lots)) p.lots = [];
   if (indexRaw === '') {
-    p.lots.push({ cost, qty, date, source });
-    transactions.push({ type:'buy', productCode:code, productName:p.name, cost, qty, total:cost*qty, date:new Date().toISOString(), source });
+    p.lots.push({ cost, goldCost:goldBaseCost, laborCost, qty, date, source });
+    p.laborCost = laborCost;
+    transactions.push({ type:'buy', productCode:code, productName:p.name, cost, goldCost:goldBaseCost, laborCost, fee:p.fee||0, qty, total:cost*qty, productType:p.type, productWeight:p.weight, weightLabel:WEIGHT_LABELS[p.weight]||p.weight, date:new Date().toISOString(), source });
   } else {
-    p.lots[Number(indexRaw)] = { ...(p.lots[Number(indexRaw)] || {}), cost, qty, date, source };
+    p.lots[Number(indexRaw)] = { ...(p.lots[Number(indexRaw)] || {}), cost, goldCost:goldBaseCost, laborCost, qty, date, source };
+    p.laborCost = laborCost;
   }
   save(); closeModal('lotModal'); renderStock(); renderDashboard(); renderBarcodeList();
   showToast('บันทึกล็อตแล้ว', 'success');
@@ -2507,6 +2747,13 @@ function getReportRows() {
     } else if (type === 'savings_close') {
       category = 'ปิดบัญชีออมทอง';
       if (!profit && revenue) profit = revenue - cost - fee;
+    } else if (type === 'installment_payment') {
+      category = 'รับชำระผ่อนทอง';
+      if (!profit && revenue && t.contractNo) {
+        const c = installmentContracts.find(x => getInstallmentKey(x) === t.contractNo);
+        const ratio = c && c.finalPrice ? Number(c.profitAdd || 0) / Number(c.finalPrice || 1) : 0;
+        profit = Math.round(revenue * ratio);
+      }
     } else {
       return null;
     }
@@ -2850,6 +3097,7 @@ function renderCRM() {
         <div class="crm-meta">${cnt} รายการ · ยอดรวม ${total.toLocaleString()} บาท · คะแนน ${c.points||0} pt</div>
       </div>
       ${can('editCustomer') ? `<div style="display:flex;gap:6px;margin-top:10px;">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openCustomerVisitModal('${c.name || ''}','${c.phone || ''}')">บันทึกติดต่อ</button>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCustomer('${id}')">แก้ไข</button>
         <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCustomer('${id}')">ลบ</button>
       </div>` : ''}
@@ -2865,12 +3113,12 @@ function showCRMDetail(key) {
   const c = getCustomerByKey(key);
   if (!c) return;
   const rows = [...c.transactions].reverse().slice(0,20).map(t=>{
-    const icon = t.type==='sale'?'⬆':t.type==='pawn'?'◈':'◎';
-    const label = t.type==='sale'?'ขาย':t.type==='pawn'?'จำนำ':'ออม';
+    const icon = t.type==='sale'?'⬆':t.type==='pawn'?'◈':t.type==='installment'?'▣':t.type==='visit'?'☰':'◎';
+    const label = t.type==='sale'?'ขาย':t.type==='pawn'?'จำนำ':t.type==='installment'?'ผ่อนทอง':t.type==='visit'?'ติดต่อ':'ออม';
     const ds = new Date(t.date).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
     return `<div class="tx-row"><div class="tx-icon ${t.type==='sale'?'sale':'buy'}">${icon}</div>
-      <div class="tx-meta"><div class="tx-name">${t.item}</div><div class="tx-date">${label} · ${ds}</div></div>
-      <div class="tx-amount ${t.type==='sale'?'sale':'buy'}">${t.type==='sale'?'+':''} ${t.amount.toLocaleString()}</div>
+      <div class="tx-meta"><div class="tx-name">${t.item}</div><div class="tx-date">${label} · ${ds}${t.phone?' · '+t.phone:''}${t.note?' · '+t.note:''}</div></div>
+      <div class="tx-amount ${t.type==='sale'?'sale':'buy'}">${t.amount ? ((t.type==='sale'?'+':'') + ' ' + t.amount.toLocaleString()) : '—'}</div>
     </div>`;
   }).join('');
   const totalSale = c.transactions.filter(t=>t.type==='sale').reduce((s,t)=>s+t.amount,0);
@@ -2883,6 +3131,37 @@ function showCRMDetail(key) {
     ${rows || '<div class="empty"><div class="empty-text">ยังไม่มีรายการ</div></div>'}
   `;
   document.getElementById('crmModal').classList.add('open');
+}
+
+function openCustomerVisitModal(name='', phone='') {
+  if (!requirePerm('editCustomer', 'ไม่มีสิทธิ์บันทึกประวัติลูกค้า')) return;
+  document.getElementById('visitCustomerName').value = name;
+  document.getElementById('visitCustomerPhone').value = phone;
+  document.getElementById('visitDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('visitReason').value = 'สอบถามราคา';
+  document.getElementById('visitNote').value = '';
+  document.getElementById('customerVisitModal').classList.add('open');
+}
+
+function confirmCustomerVisit() {
+  if (!requirePerm('editCustomer', 'ไม่มีสิทธิ์บันทึกประวัติลูกค้า')) return;
+  const name = document.getElementById('visitCustomerName').value.trim();
+  const phone = document.getElementById('visitCustomerPhone').value.trim();
+  const date = dateInputToIso(document.getElementById('visitDate').value);
+  const reason = document.getElementById('visitReason').value;
+  const note = document.getElementById('visitNote').value.trim();
+  if (!name && !phone) { alert('กรุณากรอกชื่อลูกค้าหรือเบอร์โทร'); return; }
+  const c = upsertCustomerRecord(name, phone);
+  c.transactions.push({
+    type:'visit',
+    item: reason,
+    amount: 0,
+    phone: normalizePhone(phone),
+    note,
+    date
+  });
+  save(); closeModal('customerVisitModal'); renderCRM();
+  showToast('บันทึกประวัติลูกค้าแล้ว', 'success');
 }
 
 function editCustomer(key) {
@@ -2935,7 +3214,17 @@ function saveCustomerEdit() {
       }
     }
   });
-  save(); closeModal('customerModal'); renderCRM(); renderHistory(); renderPawn(); renderSavings();
+  installmentContracts.forEach(inst => {
+    if (inst.customer === oldName || inst.customerName === oldName) {
+      inst.customer = c.name;
+      inst.customerName = c.name;
+      if (phone) {
+        inst.phone = phone;
+        inst.customerPhone = phone;
+      }
+    }
+  });
+  save(); closeModal('customerModal'); renderCRM(); renderHistory(); renderPawn(); renderSavings(); renderInstallments();
   showToast('บันทึกข้อมูลลูกค้าแล้ว', 'success');
 }
 
@@ -3184,6 +3473,27 @@ async function awaitSafeSavePawn(docId, payload) {
 }
 
 // ============ SAVINGS ============
+function nextSavingsId() {
+  const maxNo = (savingsAccounts || []).reduce((max, sv) => {
+    const raw = String(sv.id || sv.accountNo || sv._docId || '');
+    const m = raw.match(/SV-(\d+)/i);
+    return m ? Math.max(max, parseInt(m[1], 10)) : max;
+  }, 0);
+  let next = maxNo + 1;
+  let id = 'SV-' + String(next).padStart(4,'0');
+  while (savingsAccounts.some(sv => String(sv.id || sv.accountNo || sv._docId) === id)) {
+    next++;
+    id = 'SV-' + String(next).padStart(4,'0');
+  }
+  return id;
+}
+
+function savingsPeriodLabel(period) {
+  if (period === 'daily') return 'วัน';
+  if (period === 'weekly') return 'สัปดาห์';
+  return 'เดือน';
+}
+
 function openSavingsModal() {
   if (!requirePerm('savings', 'ไม่มีสิทธิ์เปิดบัญชีออมทอง')) return;
   document.getElementById('savingsModalTitle').textContent = '✨ เปิดบัญชีออมทอง';
@@ -3236,7 +3546,7 @@ function confirmSavings() {
     showToast('บันทึกการแก้ไขบัญชีออมทองแล้ว', 'success');
     return;
   }
-  const id = 'SV-' + String(savingsAccounts.length+1).padStart(4,'0');
+  const id = nextSavingsId();
   savingsAccounts.push({
     id,
     customer,
@@ -3263,7 +3573,7 @@ function renderSavings() {
   tbody.innerHTML = savingsAccounts.map(sv => {
     const totalDeposit = sv.payments.reduce((a,p)=>a+(p.deposit||0),0);
     const totalBonus   = sv.payments.reduce((a,p)=>a+(p.bonus||0),0);
-    const periodTh = sv.period==='weekly' ? 'สัปดาห์' : 'เดือน';
+    const periodTh = savingsPeriodLabel(sv.period);
     const statusBadge = sv.status==='closed'
       ? '<span class="chip chip-green">รับสินค้าแล้ว</span>'
       : `<span class="chip" style="background:var(--amber-bg);color:var(--amber);">กำลังออม</span>`;
@@ -3421,6 +3731,435 @@ function deleteSavings(id) {
   showToast(`ลบบัญชี ${id} เรียบร้อย`, 'info');
 }
 
+// ============ INSTALLMENT GOLD ============
+function getInstallmentKey(c) {
+  return c?.contractNo || c?.id || '';
+}
+
+function getInstallmentDocId(c) {
+  return c?._docId || c?.id || c?.contractNo || '';
+}
+
+function addPeriod(dateValue, periodType, count=1) {
+  const d = new Date(dateValue);
+  if (periodType === 'daily') d.setDate(d.getDate() + count);
+  else if (periodType === 'weekly') d.setDate(d.getDate() + (7 * count));
+  else d.setMonth(d.getMonth() + count);
+  return d;
+}
+
+function installmentPeriodLabel(type) {
+  if (type === 'daily') return 'รายวัน';
+  if (type === 'weekly') return 'รายสัปดาห์';
+  return 'รายเดือน';
+}
+
+function getInstallmentPaid(c) {
+  const down = Number(c?.downPayment || 0);
+  const pays = (c?.payments || []).reduce((sum,p)=>sum+Number(p.amount || 0),0);
+  return down + pays;
+}
+
+function getInstallmentBalance(c) {
+  return Math.max(0, Number(c?.finalPrice || 0) - getInstallmentPaid(c));
+}
+
+function getInstallmentNextDue(c) {
+  if (!c || c.status === 'closed' || c.status === 'void' || getInstallmentBalance(c) <= 0) return null;
+  const paidPeriods = (c.payments || []).length;
+  const firstDue = c.firstDueDate || addPeriod(c.startDate || new Date().toISOString(), c.periodType || 'monthly', 1).toISOString();
+  return addPeriod(firstDue, c.periodType || 'monthly', paidPeriods);
+}
+
+function getInstallmentRuntimeStatus(c) {
+  if (c.status === 'closed' || getInstallmentBalance(c) <= 0) return 'closed';
+  if (c.status === 'void') return 'void';
+  const nextDue = getInstallmentNextDue(c);
+  if (!nextDue) return 'active';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = new Date(nextDue); due.setHours(0,0,0,0);
+  const daysLeft = Math.ceil((due - today)/(1000*60*60*24));
+  if (daysLeft < 0) return 'overdue';
+  if (daysLeft <= 3) return 'due';
+  return 'active';
+}
+
+function resetInstallmentModal() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('instEditId').value = '';
+  document.getElementById('installmentModalTitle').textContent = 'ทำสัญญาผ่อนทอง';
+  document.getElementById('installmentSaveBtn').textContent = 'บันทึกสัญญา';
+  document.getElementById('instItem').value = '';
+  document.getElementById('instGoldPrice').value = spot;
+  document.getElementById('instProfitAdd').value = 1000;
+  document.getElementById('instFinalPrice').value = spot + 1000;
+  document.getElementById('instDownPayment').value = 0;
+  document.getElementById('instCustomer').value = '';
+  document.getElementById('instAddress').value = '';
+  document.getElementById('instPhone').value = '';
+  document.getElementById('instIdCard').value = '';
+  document.getElementById('instPeriodType').value = 'monthly';
+  document.getElementById('instPeriods').value = 6;
+  document.getElementById('instStartDate').value = today;
+  document.getElementById('instStatus').value = 'active';
+  calcInstallment();
+}
+
+function openInstallmentModal() {
+  if (!requirePerm('installment', 'ไม่มีสิทธิ์ทำสัญญาผ่อนทอง')) return;
+  resetInstallmentModal();
+  document.getElementById('installmentModal').classList.add('open');
+}
+
+function calcInstallment(manualFinal=false, manualAmount=false) {
+  const goldPrice = parseFloat(document.getElementById('instGoldPrice').value) || 0;
+  let profitAdd = parseFloat(document.getElementById('instProfitAdd').value) || 0;
+  let finalPrice = parseFloat(document.getElementById('instFinalPrice').value) || 0;
+  const downPayment = parseFloat(document.getElementById('instDownPayment').value) || 0;
+  const periodType = document.getElementById('instPeriodType').value || 'monthly';
+  let periods = parseInt(document.getElementById('instPeriods').value) || 1;
+  let amountPerPeriod = parseFloat(document.getElementById('instAmountPerPeriod').value) || 0;
+  const startDateValue = document.getElementById('instStartDate').value || new Date().toISOString().slice(0,10);
+
+  if (manualFinal) {
+    profitAdd = Math.max(0, finalPrice - goldPrice);
+    document.getElementById('instProfitAdd').value = profitAdd;
+  } else {
+    finalPrice = goldPrice + profitAdd;
+    document.getElementById('instFinalPrice').value = Math.round(finalPrice);
+  }
+
+  const principal = Math.max(0, finalPrice - downPayment);
+  if (manualAmount && amountPerPeriod > 0) {
+    periods = Math.max(1, Math.ceil(principal / amountPerPeriod));
+    document.getElementById('instPeriods').value = periods;
+  } else {
+    amountPerPeriod = periods > 0 ? Math.ceil(principal / periods) : principal;
+    document.getElementById('instAmountPerPeriod').value = Math.round(amountPerPeriod);
+  }
+
+  const start = new Date(startDateValue + 'T00:00:00');
+  const firstDue = addPeriod(start, periodType, 1);
+  const end = addPeriod(start, periodType, periods);
+  document.getElementById('instFirstDueDate').value = firstDue.toISOString().slice(0,10);
+  document.getElementById('instEndDate').value = end.toISOString().slice(0,10);
+  document.getElementById('installmentPreview').innerHTML = `
+    <div class="row"><span>ราคาทองขายออก</span><span>${Math.round(goldPrice).toLocaleString()} บาท</span></div>
+    <div class="row"><span>กำไร / ค่ากำเหน็จ</span><span style="color:var(--green);">+${Math.round(profitAdd).toLocaleString()} บาท</span></div>
+    <div class="row total"><span>ราคาสุทธิที่ตกลง</span><span>${Math.round(finalPrice).toLocaleString()} บาท</span></div>
+    <div class="row"><span>เงินดาวน์</span><span>${Math.round(downPayment).toLocaleString()} บาท</span></div>
+    <div class="row"><span>ยอดที่ต้องผ่อน</span><span>${Math.round(principal).toLocaleString()} บาท</span></div>
+    <div class="row"><span>${installmentPeriodLabel(periodType)} ${periods} งวด</span><span>งวดละประมาณ ${Math.round(amountPerPeriod).toLocaleString()} บาท</span></div>
+    <div class="row"><span>เริ่มงวดแรก</span><span>${firstDue.toLocaleDateString('th-TH')}</span></div>
+    <div class="row"><span>จบสัญญา</span><span>${end.toLocaleDateString('th-TH')}</span></div>
+  `;
+}
+
+function editInstallment(id) {
+  if (!requirePerm('installment', 'ไม่มีสิทธิ์แก้ไขสัญญาผ่อนทอง')) return;
+  const c = installmentContracts.find(x=>getInstallmentKey(x)===id);
+  if (!c) return;
+  document.getElementById('installmentModalTitle').textContent = 'แก้ไขสัญญาผ่อนทอง';
+  document.getElementById('installmentSaveBtn').textContent = 'บันทึกการแก้ไข';
+  document.getElementById('instEditId').value = getInstallmentKey(c);
+  document.getElementById('instItem').value = c.item || '';
+  document.getElementById('instGoldPrice').value = c.goldPrice || 0;
+  document.getElementById('instProfitAdd').value = c.profitAdd || 0;
+  document.getElementById('instFinalPrice').value = c.finalPrice || 0;
+  document.getElementById('instDownPayment').value = c.downPayment || 0;
+  document.getElementById('instCustomer').value = c.customerName || c.customer || '';
+  document.getElementById('instAddress').value = c.address || '';
+  document.getElementById('instPhone').value = c.phone || c.customerPhone || '';
+  document.getElementById('instIdCard').value = c.idCard || '';
+  document.getElementById('instPeriodType').value = c.periodType || 'monthly';
+  document.getElementById('instPeriods').value = c.periods || 1;
+  document.getElementById('instAmountPerPeriod').value = c.amountPerPeriod || 0;
+  document.getElementById('instStartDate').value = isoToDateInput(c.startDate);
+  document.getElementById('instFirstDueDate').value = isoToDateInput(c.firstDueDate);
+  document.getElementById('instEndDate').value = isoToDateInput(c.endDate);
+  document.getElementById('instStatus').value = c.status || 'active';
+  calcInstallment(true);
+  document.getElementById('installmentModal').classList.add('open');
+}
+
+function confirmInstallment() {
+  if (!requirePerm('installment', 'ไม่มีสิทธิ์บันทึกสัญญาผ่อนทอง')) return;
+  const editId = document.getElementById('instEditId').value;
+  const item = document.getElementById('instItem').value.trim();
+  const customer = document.getElementById('instCustomer').value.trim();
+  const address = document.getElementById('instAddress').value.trim();
+  const phone = document.getElementById('instPhone').value.trim();
+  const idCard = document.getElementById('instIdCard').value.trim();
+  const goldPrice = parseFloat(document.getElementById('instGoldPrice').value) || 0;
+  const profitAdd = parseFloat(document.getElementById('instProfitAdd').value) || 0;
+  const finalPrice = parseFloat(document.getElementById('instFinalPrice').value) || 0;
+  const downPayment = parseFloat(document.getElementById('instDownPayment').value) || 0;
+  const periodType = document.getElementById('instPeriodType').value;
+  const periods = parseInt(document.getElementById('instPeriods').value) || 1;
+  const amountPerPeriod = parseFloat(document.getElementById('instAmountPerPeriod').value) || 0;
+  const startDate = dateInputToIso(document.getElementById('instStartDate').value);
+  const firstDueDate = dateInputToIso(document.getElementById('instFirstDueDate').value);
+  const endDate = dateInputToIso(document.getElementById('instEndDate').value);
+  const status = document.getElementById('instStatus').value;
+  if (!item || !customer || !phone || !address || !finalPrice || !periods || !amountPerPeriod) {
+    alert('กรุณากรอกสินค้า ลูกค้า ที่อยู่ เบอร์โทร ราคาสุทธิ และจำนวนงวดให้ครบ');
+    return;
+  }
+  const customerRecord = upsertCustomerRecord(customer, phone);
+  let c = editId ? installmentContracts.find(x=>getInstallmentKey(x)===editId) : null;
+  const isEdit = !!c;
+  const contractNo = isEdit ? getInstallmentKey(c) : 'INS-' + String(installmentContracts.length+1).padStart(4,'0');
+  const payload = {
+    contractNo,
+    id: contractNo,
+    item,
+    goldPrice,
+    profitAdd,
+    finalPrice,
+    downPayment,
+    customer,
+    customerName: customer,
+    address,
+    phone,
+    customerPhone: phone,
+    customerId: customerRecord?.id || '',
+    idCard,
+    periodType,
+    periods,
+    amountPerPeriod,
+    startDate,
+    firstDueDate,
+    endDate,
+    status,
+    date: isEdit ? (c.date || new Date().toISOString()) : new Date().toISOString(),
+    payments: isEdit ? (c.payments || []) : []
+  };
+  payload._docId = isEdit ? getInstallmentDocId(c) : contractNo;
+  if (isEdit) Object.assign(c, payload, { updatedAt:new Date().toISOString() });
+  else {
+    installmentContracts.push(payload);
+    addCustomerTransaction(customer, 'installment', 'เปิดสัญญาผ่อนทอง: ' + item, finalPrice);
+    if (downPayment > 0) {
+      transactions.push({
+        type:'installment_payment',
+        txnNo: nextTxnNo(),
+        productName:'เงินดาวน์ผ่อนทอง-' + contractNo,
+        total:downPayment,
+        amount:downPayment,
+        profit: finalPrice > 0 ? Math.round(downPayment * (profitAdd/finalPrice)) : 0,
+        qty:1,
+        customer,
+        customerName: customer,
+        customerPhone: phone,
+        contractNo,
+        date:new Date().toISOString()
+      });
+    }
+  }
+  save(); closeModal('installmentModal'); renderInstallments(); renderDashboard(); renderCRM();
+  showToast(`${isEdit ? 'แก้ไข' : 'บันทึก'}สัญญา ${contractNo} เรียบร้อย`, 'success');
+}
+
+function renderInstallments() {
+  const q = (document.getElementById('installmentSearch')?.value || '').toLowerCase();
+  const sf = document.getElementById('installmentStatusFilter')?.value || '';
+  const list = (installmentContracts || []).filter(c => {
+    const status = getInstallmentRuntimeStatus(c);
+    const text = [getInstallmentKey(c), c.customerName, c.customer, c.phone, c.item].join(' ').toLowerCase();
+    return (!q || text.includes(q)) && (!sf || status === sf);
+  });
+  renderInstallmentMetrics();
+  const tbody = document.getElementById('installmentTbody');
+  if (!tbody) return;
+  if (!list.length) { tbody.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-text">ยังไม่มีสัญญาผ่อนทอง</div></div></td></tr>'; return; }
+  tbody.innerHTML = list.map(c => {
+    const paid = getInstallmentPaid(c);
+    const balance = getInstallmentBalance(c);
+    const pct = c.finalPrice > 0 ? Math.min(100, Math.round(paid / c.finalPrice * 100)) : 0;
+    const nextDue = getInstallmentNextDue(c);
+    const status = getInstallmentRuntimeStatus(c);
+    const cls = status === 'closed' ? 'contract-closed' : status === 'void' ? 'contract-void' : status === 'overdue' ? 'contract-overdue' : status === 'due' ? 'contract-due' : 'contract-active';
+    const label = status === 'closed' ? 'ปิดสัญญา' : status === 'void' ? 'ยกเลิก' : status === 'overdue' ? 'ค้างชำระ' : status === 'due' ? 'ใกล้ครบกำหนด' : 'กำลังผ่อน';
+    return `<tr>
+      <td><span class="mono">${getInstallmentKey(c)}</span></td>
+      <td><div style="font-weight:500;">${c.customerName || c.customer || '—'}</div><div style="font-size:11px;color:var(--text3);">${c.item || '—'} · ${c.phone || c.customerPhone || 'ไม่มีเบอร์'}</div></td>
+      <td class="num"><strong>${Number(c.finalPrice||0).toLocaleString()}</strong><div style="font-size:11px;color:var(--green);">กำไร ${Number(c.profitAdd||0).toLocaleString()}</div></td>
+      <td><div style="font-size:12px;">${installmentPeriodLabel(c.periodType)} ${c.periods||0} งวด</div><div style="font-size:11px;color:var(--text3);">งวดละ ${Number(c.amountPerPeriod||0).toLocaleString()}</div></td>
+      <td class="num contract-progress">${paid.toLocaleString()}<div class="contract-progress-track"><div class="contract-progress-fill" style="width:${pct}%;"></div></div></td>
+      <td class="num"><strong ${balance>0?'style="color:var(--red)"':''}>${balance.toLocaleString()}</strong></td>
+      <td class="num">${nextDue ? new Date(nextDue).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—'}</td>
+      <td><span class="contract-status ${cls}">${label}</span></td>
+      <td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap;padding-top:10px;">
+        ${status!=='closed' && status!=='void' ? `<button class="btn btn-primary btn-sm" onclick="openInstallmentPayModal('${getInstallmentKey(c)}')">รับชำระ</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="showInstallmentContract('${getInstallmentKey(c)}')">สัญญา</button>
+        <button class="btn btn-ghost btn-sm" onclick="editInstallment('${getInstallmentKey(c)}')">แก้ไข</button>
+        <button class="btn btn-ghost btn-sm" onclick="showInstallmentPayments('${getInstallmentKey(c)}')">งวด</button>
+        ${status!=='closed' && status!=='void' ? `<button class="btn btn-ghost btn-sm" onclick="closeInstallment('${getInstallmentKey(c)}')">ปิด</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteInstallment('${getInstallmentKey(c)}')">ลบ</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderInstallmentMetrics() {
+  const el = document.getElementById('installmentMetrics');
+  if (!el) return;
+  const active = installmentContracts.filter(c=>['active','due','overdue'].includes(getInstallmentRuntimeStatus(c)));
+  const overdue = installmentContracts.filter(c=>getInstallmentRuntimeStatus(c)==='overdue');
+  const totalReceivable = active.reduce((s,c)=>s+getInstallmentBalance(c),0);
+  const paid = installmentContracts.reduce((s,c)=>s+getInstallmentPaid(c),0);
+  el.innerHTML = `
+    <div class="metric"><div class="metric-label">สัญญากำลังผ่อน</div><div class="metric-value">${active.length}</div><div class="metric-sub">รายการ</div></div>
+    <div class="metric gold"><div class="metric-label">ยอดค้างรับ</div><div class="metric-value">${Math.round(totalReceivable/1000).toLocaleString()}K</div><div class="metric-sub">บาท</div></div>
+    <div class="metric ${overdue.length?'':'green'}"><div class="metric-label">ค้างชำระ</div><div class="metric-value">${overdue.length}</div><div class="metric-sub">สัญญา</div></div>
+    <div class="metric green"><div class="metric-label">รับชำระแล้ว</div><div class="metric-value">${Math.round(paid/1000).toLocaleString()}K</div><div class="metric-sub">บาท</div></div>
+  `;
+}
+
+function openInstallmentPayModal(id, index='') {
+  if (!requirePerm('installment', 'ไม่มีสิทธิ์รับชำระผ่อนทอง')) return;
+  const c = installmentContracts.find(x=>getInstallmentKey(x)===id);
+  if (!c) return;
+  const payment = index === '' ? null : c.payments[Number(index)];
+  const balance = getInstallmentBalance(c);
+  document.getElementById('installmentPayTitle').textContent = payment ? 'แก้ไขงวดชำระ' : 'รับชำระค่างวด';
+  document.getElementById('instPayId').value = id;
+  document.getElementById('instPayIndex').value = index;
+  document.getElementById('instPayAmount').value = payment ? payment.amount : Math.min(Number(c.amountPerPeriod||balance), balance);
+  document.getElementById('instPayDate').value = isoToDateInput(payment?.date);
+  document.getElementById('instPayChannel').value = payment?.channel || 'เงินสด';
+  document.getElementById('instPayRef').value = payment?.ref || '';
+  document.getElementById('instPayNote').value = payment?.note || '';
+  document.getElementById('instPayInfo').innerHTML = `<strong>${c.customerName || c.customer}</strong> · ${getInstallmentKey(c)}<br>คงเหลือ <strong>${balance.toLocaleString()} บาท</strong> · งวดละ ${Number(c.amountPerPeriod||0).toLocaleString()} บาท`;
+  document.getElementById('installmentPayModal').classList.add('open');
+}
+
+function confirmInstallmentPayment() {
+  const id = document.getElementById('instPayId').value;
+  const indexRaw = document.getElementById('instPayIndex').value;
+  const c = installmentContracts.find(x=>getInstallmentKey(x)===id);
+  if (!c) return;
+  const amount = parseFloat(document.getElementById('instPayAmount').value) || 0;
+  const date = dateInputToIso(document.getElementById('instPayDate').value);
+  const channel = document.getElementById('instPayChannel').value;
+  const ref = document.getElementById('instPayRef').value.trim();
+  const note = document.getElementById('instPayNote').value.trim();
+  if (!amount) { alert('กรุณากรอกจำนวนเงินที่รับ'); return; }
+  if (!Array.isArray(c.payments)) c.payments = [];
+  const payload = { amount, date, channel, ref, note };
+  if (indexRaw === '') {
+    c.payments.push(payload);
+    const profitRatio = Number(c.finalPrice||0) > 0 ? Number(c.profitAdd||0) / Number(c.finalPrice||1) : 0;
+    transactions.push({
+      type:'installment_payment',
+      txnNo: nextTxnNo(),
+      productName:'ผ่อนทอง-' + getInstallmentKey(c),
+      total:amount,
+      amount,
+      profit:Math.round(amount * profitRatio),
+      qty:1,
+      customer:c.customerName || c.customer,
+      customerName:c.customerName || c.customer,
+      customerPhone:c.phone || c.customerPhone || '',
+      contractNo:getInstallmentKey(c),
+      channel,
+      date
+    });
+    addCustomerTransaction(c.customerName || c.customer, 'installment', 'ชำระผ่อนทอง ' + getInstallmentKey(c), amount);
+  } else {
+    c.payments[Number(indexRaw)] = payload;
+  }
+  if (getInstallmentBalance(c) <= 0) {
+    c.status = 'closed';
+    c.closedDate = new Date().toISOString();
+  }
+  save(); closeModal('installmentPayModal'); renderInstallments(); renderDashboard(); renderHistory(); renderCRM();
+  showToast('บันทึกชำระค่างวดแล้ว', 'success');
+}
+
+function showInstallmentPayments(id) {
+  const c = installmentContracts.find(x=>getInstallmentKey(x)===id);
+  if (!c) return;
+  const rows = (c.payments || []).map((p,i)=>{
+    const d = new Date(p.date || Date.now()).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return `${i+1}. ${d} · ${Number(p.amount||0).toLocaleString()} บาท · ${p.channel||'-'} ${p.ref?`· ${p.ref}`:''}`;
+  }).join('\n');
+  const choice = prompt(`งวดชำระ ${getInstallmentKey(c)} - ${c.customerName || c.customer}\n\nเงินดาวน์: ${Number(c.downPayment||0).toLocaleString()} บาท\n${rows || 'ยังไม่มีงวดชำระ'}\n\nพิมพ์เลขงวดเพื่อแก้ไข หรือพิมพ์ d ตามด้วยเลขงวดเพื่อลบ เช่น d2`);
+  if (!choice) return;
+  const value = choice.trim().toLowerCase();
+  if (value.startsWith('d')) {
+    const idx = Number(value.slice(1)) - 1;
+    if (!c.payments[idx]) { alert('ไม่พบงวดที่เลือก'); return; }
+    if (!confirm(`ลบงวดที่ ${idx+1}?`)) return;
+    c.payments.splice(idx, 1);
+    if (c.status === 'closed' && getInstallmentBalance(c) > 0) c.status = 'active';
+    save(); renderInstallments(); showToast('ลบงวดชำระแล้ว', 'info');
+    return;
+  }
+  const idx = Number(value) - 1;
+  if (!c.payments[idx]) { alert('ไม่พบงวดที่เลือก'); return; }
+  openInstallmentPayModal(id, idx);
+}
+
+function closeInstallment(id) {
+  if (!requirePerm('installment', 'ไม่มีสิทธิ์ปิดสัญญาผ่อนทอง')) return;
+  const c = installmentContracts.find(x=>getInstallmentKey(x)===id);
+  if (!c) return;
+  const balance = getInstallmentBalance(c);
+  const msg = balance > 0
+    ? `ยังมียอดคงเหลือ ${balance.toLocaleString()} บาท\nต้องการปิดสัญญาเลยหรือไม่?`
+    : 'ยืนยันปิดสัญญาผ่อนทอง?';
+  if (!confirm(msg)) return;
+  c.status = 'closed';
+  c.closedDate = new Date().toISOString();
+  save(); renderInstallments(); renderDashboard();
+}
+
+function deleteInstallment(id) {
+  if (!requirePerm('installment', 'ไม่มีสิทธิ์ลบสัญญาผ่อนทอง')) return;
+  const c = installmentContracts.find(x=>getInstallmentKey(x)===id);
+  if (!c) return;
+  if (!confirm(`ลบสัญญา ${id}\nลูกค้า: ${c.customerName || c.customer || '-'}\nยืนยันลบรายการนี้?`)) return;
+  const docId = getInstallmentDocId(c);
+  installmentContracts = installmentContracts.filter(x=>getInstallmentKey(x)!==id);
+  if (window._fbReady && docId) window._fb.deleteDoc('installments', docId);
+  save(); renderInstallments(); renderDashboard();
+}
+
+function showInstallmentContract(id) {
+  const c = installmentContracts.find(x=>getInstallmentKey(x)===id);
+  if (!c) return;
+  const shop = getShopSettings();
+  const paid = getInstallmentPaid(c);
+  const balance = getInstallmentBalance(c);
+  const rows = (c.payments || []).map((p,i)=>`
+    <div class="r-row"><span>งวดที่ ${i+1} · ${formatDateTH(p.date)}</span><span>${Number(p.amount||0).toLocaleString()} บาท</span></div>
+  `).join('');
+  document.getElementById('receiptContent').innerHTML = `
+    <div class="receipt" id="printReceipt">
+      <h2>${shop.name || 'ห้างทอง'}</h2>
+      <div class="sub">สัญญาผ่อนทอง<br>เลขที่ ${getInstallmentKey(c)}</div>
+      <div class="r-row"><span>ลูกค้า</span><span>${c.customerName || c.customer}</span></div>
+      <div class="r-row"><span>เบอร์โทร</span><span>${c.phone || c.customerPhone || '-'}</span></div>
+      <div class="r-row"><span>ที่อยู่</span><span style="text-align:right;max-width:150px;">${c.address || '-'}</span></div>
+      <div class="r-row"><span>สินค้า</span><span>${c.item || '-'}</span></div>
+      <div class="r-row"><span>ราคาทองขายออก</span><span>${Number(c.goldPrice||0).toLocaleString()} บาท</span></div>
+      <div class="r-row"><span>กำไร / ค่ากำเหน็จ</span><span>${Number(c.profitAdd||0).toLocaleString()} บาท</span></div>
+      <div class="r-total"><span>ราคาสุทธิ</span><span>${Number(c.finalPrice||0).toLocaleString()} บาท</span></div>
+      <div class="r-row"><span>เงินดาวน์</span><span>${Number(c.downPayment||0).toLocaleString()} บาท</span></div>
+      <div class="r-row"><span>แผนผ่อน</span><span>${installmentPeriodLabel(c.periodType)} ${c.periods||0} งวด</span></div>
+      <div class="r-row"><span>งวดละ</span><span>${Number(c.amountPerPeriod||0).toLocaleString()} บาท</span></div>
+      <div class="r-row"><span>เริ่มสัญญา</span><span>${formatDateTH(c.startDate)}</span></div>
+      <div class="r-row"><span>จบสัญญา</span><span>${formatDateTH(c.endDate)}</span></div>
+      <div class="r-row"><span>ชำระแล้ว</span><span>${paid.toLocaleString()} บาท</span></div>
+      <div class="r-total"><span>คงเหลือ</span><span>${balance.toLocaleString()} บาท</span></div>
+      ${rows ? `<div style="margin-top:10px;font-weight:700;font-size:12px;">ประวัติชำระ</div>${rows}` : ''}
+      <div class="thank">เอกสารนี้ใช้เป็นหลักฐานการตกลงผ่อนทอง<br>กรุณาเก็บไว้เพื่อตรวจสอบยอดชำระ</div>
+    </div>
+  `;
+  document.getElementById('receiptModal').classList.add('open');
+}
+
 // ============ SAVINGS SUMMARY CARD (แคปส่ง LINE) ============
 function showSavingsSummary(id, mode) {
   const sv = savingsAccounts.find(x=>x.id===id);
@@ -3428,7 +4167,7 @@ function showSavingsSummary(id, mode) {
   const totalDeposit = sv.payments.reduce((a,p)=>a+(p.deposit||0),0);
   const totalBonus   = sv.payments.reduce((a,p)=>a+(p.bonus||0),0);
   const lastPay      = sv.payments.length ? sv.payments[sv.payments.length-1] : null;
-  const periodTh     = sv.period==='weekly' ? 'รายสัปดาห์' : 'รายเดือน';
+  const periodTh     = sv.period==='daily' ? 'รายวัน' : sv.period==='weekly' ? 'รายสัปดาห์' : 'รายเดือน';
   const dateStr      = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
   const goldPriceStr = (lastPay ? lastPay.goldPrice : spot).toLocaleString();
   const maxBar = Math.max(sv.saved, 1);
@@ -3564,7 +4303,7 @@ function sendLineSummaryText(id) {
   const totalDeposit = sv.payments.reduce((a,p)=>a+(p.deposit||0),0);
   const totalBonus   = sv.payments.reduce((a,p)=>a+(p.bonus||0),0);
   const lastPay      = sv.payments.length ? sv.payments[sv.payments.length-1] : null;
-  const periodTh     = sv.period==='weekly' ? 'รายสัปดาห์' : 'รายเดือน';
+  const periodTh     = sv.period==='daily' ? 'รายวัน' : sv.period==='weekly' ? 'รายสัปดาห์' : 'รายเดือน';
   const dateStr      = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
   const gpStr        = lastPay ? lastPay.goldPrice.toLocaleString() : spot.toLocaleString();
   const lastBlock    = lastPay ? `\n🟡 งวดล่าสุด: ฝาก ${(lastPay.deposit||0).toLocaleString()} + โบนัส ${(lastPay.bonus||0).toLocaleString()} = ${(lastPay.total||0).toLocaleString()} บาท` : '';
