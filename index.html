@@ -1866,7 +1866,7 @@ function renderDashboard() {
     <div class="metric"><div class="metric-label">รายได้ (วันนี้)</div><div class="metric-value">${todayRevenue.toLocaleString()}</div><div class="metric-sub">${todaySales.length} รายการ</div></div>
     <div class="metric green"><div class="metric-label">กำไร (วันนี้)</div><div class="metric-value">${todayProfit.toLocaleString()}</div><div class="metric-sub">บาท</div></div>
     <div class="metric"><div class="metric-label">ชิ้นในสต็อก</div><div class="metric-value">${totalStock}</div><div class="metric-sub">ชิ้น</div></div>
-    <div class="metric"><div class="metric-label">มูลค่าสต็อก</div><div class="metric-value">${(totalValue/1000).toFixed(0)}K</div><div class="metric-sub">บาท</div></div>
+    <div class="metric"><div class="metric-label">มูลค่าสต็อก</div><div class="metric-value">${Math.round(totalValue).toLocaleString()}</div><div class="metric-sub">บาท</div></div>
     <div class="metric gold"><div class="metric-label">ยอดผ่อนค้างรับ</div><div class="metric-value">${Math.round(installmentReceivable/1000).toLocaleString()}K</div><div class="metric-sub">${activeInstallments.length} สัญญา</div></div>
   `;
 
