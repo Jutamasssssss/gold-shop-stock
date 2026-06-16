@@ -1856,8 +1856,8 @@ function renderDashboard() {
   const todayRevenue = todaySales.reduce((s,t) => s+t.revenue, 0);
   const todayProfit = todaySales.reduce((s,t) => s+t.profit, 0);
 
-  const totalStock = products.reduce((s,p) => s + p.lots.reduce((a,l)=>a+l.qty,0), 0);
-  const totalValue = products.reduce((s,p) => s + p.lots.reduce((a,l)=>a+l.cost*l.qty,0), 0);
+  const totalStock = products.reduce((s,p) => s + getProductQty(p), 0);
+  const totalValue = products.reduce((s,p) => s + getProductStockValue(p), 0);
   const activeInstallments = installmentContracts.filter(c => ['active','due','overdue'].includes(getInstallmentRuntimeStatus(c)));
   const installmentReceivable = activeInstallments.reduce((s,c)=>s+getInstallmentBalance(c),0);
 
@@ -2010,11 +2010,25 @@ function copyReminderMsg() {
 }
 
 // ============ STOCK TABLE ============
-function getProductQty(p) { return p.lots.reduce((a,l)=>a+l.qty,0); }
+function getProductQty(p) { return (p.lots || []).reduce((a,l)=>a+(l.qty||0),0); }
+function getLotUnitCost(p, lot) {
+  const savedCost = parseFloat(lot?.cost);
+  if (Number.isFinite(savedCost) && savedCost > 0) return savedCost;
+
+  const goldBaseCost = parseFloat(lot?.goldCost);
+  const laborCost = parseFloat(lot?.laborCost) || parseFloat(p?.laborCost) || 0;
+  if (Number.isFinite(goldBaseCost) && goldBaseCost > 0) return goldBaseCost + laborCost;
+
+  return goldCost(p?.weight || 4) + laborCost;
+}
+function getProductStockValue(p) {
+  return (p.lots || []).reduce((sum, lot) => sum + getLotUnitCost(p, lot) * (lot.qty || 0), 0);
+}
 function getAvgCost(p) {
-  const totalUnits = p.lots.reduce((a,l)=>a+l.qty,0);
+  const lots = Array.isArray(p.lots) ? p.lots : [];
+  const totalUnits = lots.reduce((a,l)=>a+(l.qty||0),0);
   if (!totalUnits) return 0;
-  return p.lots.reduce((a,l)=>a+l.cost*l.qty,0) / totalUnits;
+  return lots.reduce((a,l)=>a+getLotUnitCost(p,l)*(l.qty||0),0) / totalUnits;
 }
 function getAvgLotField(p, field) {
   const lots = Array.isArray(p.lots) ? p.lots : [];
@@ -2323,7 +2337,7 @@ function updateSalePreview() {
   for (const lot of p.lots) {
     if (remaining <= 0) break;
     const use = Math.min(lot.qty, remaining);
-    lotsToUse.push({ cost: lot.cost, qty: use, date: lot.date });
+    lotsToUse.push({ cost: getLotUnitCost(p, lot), qty: use, date: lot.date });
     remaining -= use;
   }
   const fifoInfo = lotsToUse.map(l=>`ล็อต ${new Date(l.date).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'})} ต้นทุน ${Math.round(l.cost).toLocaleString()} × ${l.qty}`).join(', ');
@@ -2597,8 +2611,9 @@ function showLots(code) {
   const rows = (p.lots || []).map((lot, i) => {
     const d = new Date(lot.date || Date.now()).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
     const labor = parseFloat(lot.laborCost)||0;
-    const gold = parseFloat(lot.goldCost)||Math.max(0, (parseFloat(lot.cost)||0) - labor);
-    return `${i+1}. ทอง ${Math.round(gold).toLocaleString()} + กำเหน็จต้นทุน ${Math.round(labor).toLocaleString()} = ${Math.round(lot.cost||0).toLocaleString()} บาท × ${lot.qty||0} ชิ้น · ${d} · ${lot.source || '-'}`;
+    const unitCost = getLotUnitCost(p, lot);
+    const gold = parseFloat(lot.goldCost)||Math.max(0, unitCost - labor);
+    return `${i+1}. ทอง ${Math.round(gold).toLocaleString()} + กำเหน็จต้นทุน ${Math.round(labor).toLocaleString()} = ${Math.round(unitCost).toLocaleString()} บาท × ${lot.qty||0} ชิ้น · ${d} · ${lot.source || '-'}`;
   }).join('\n');
   const choice = prompt(`ล็อตของ ${p.name}\n\n${rows || 'ยังไม่มีล็อต'}\n\nพิมพ์เลขล็อตที่ต้องการแก้ไข หรือเว้นว่างเพื่อเพิ่มล็อตใหม่`);
   if (choice === null) return;
