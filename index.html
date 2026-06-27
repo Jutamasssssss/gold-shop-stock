@@ -2011,15 +2011,23 @@ function copyReminderMsg() {
 
 // ============ STOCK TABLE ============
 function getProductQty(p) { return (p.lots || []).reduce((a,l)=>a+(l.qty||0),0); }
-function getLotUnitCost(p, lot) {
-  const savedCost = parseFloat(lot?.cost);
-  if (Number.isFinite(savedCost) && savedCost > 0) return savedCost;
-
-  const goldBaseCost = parseFloat(lot?.goldCost);
+function getLotLaborCost(p, lot) {
   const laborCost = parseFloat(lot?.laborCost) || parseFloat(p?.laborCost) || 0;
-  if (Number.isFinite(goldBaseCost) && goldBaseCost > 0) return goldBaseCost + laborCost;
+  return Number.isFinite(laborCost) ? laborCost : 0;
+}
+function getLotGoldCost(p, lot) {
+  const goldBaseCost = parseFloat(lot?.goldCost);
+  if (Number.isFinite(goldBaseCost) && goldBaseCost > 0) return goldBaseCost;
 
-  return goldCost(p?.weight || 4) + laborCost;
+  const savedCost = parseFloat(lot?.cost);
+  if (Number.isFinite(savedCost) && savedCost > 0) {
+    return Math.max(0, savedCost - getLotLaborCost(p, lot));
+  }
+
+  return goldCost(p?.weight || 4);
+}
+function getLotUnitCost(p, lot) {
+  return getLotGoldCost(p, lot) + getLotLaborCost(p, lot);
 }
 function getProductStockValue(p) {
   return (p.lots || []).reduce((sum, lot) => sum + getLotUnitCost(p, lot) * (lot.qty || 0), 0);
