@@ -1850,6 +1850,10 @@ function weightInBahtUnits(w) {
 function goldCost(w) { return spot * 0.965 * (weightInBahtUnits(w) / 4); }
 function sellPrice(cost, fee) { return Math.ceil((cost + fee) / 50) * 50; }
 function buyBackPrice(w, spread) { return Math.floor((goldCost(w) - spread) / 50) * 50; }
+function getProductSaleFee(p) {
+  const fee = parseFloat(p?.fee);
+  return Number.isFinite(fee) ? fee : 0;
+}
 
 // ============ DASHBOARD ============
 function renderDashboard() {
@@ -2024,13 +2028,13 @@ function getLotGoldCost(p, lot) {
   if (Number.isFinite(goldBaseCost) && goldBaseCost > 0) return goldBaseCost;
 
   const savedCost = parseFloat(lot?.cost);
-  if (Number.isFinite(savedCost) && savedCost > 0) {
-    return Math.max(0, savedCost - getLotLaborCost(p, lot));
-  }
+  if (Number.isFinite(savedCost) && savedCost > 0) return savedCost;
 
   return goldCost(p?.weight || 4);
 }
 function getLotUnitCost(p, lot) {
+  const totalCost = parseFloat(lot?.totalCost) || parseFloat(p?.totalCost);
+  if (Number.isFinite(totalCost) && totalCost > 0) return totalCost;
   return getLotGoldCost(p, lot) + getLotLaborCost(p, lot);
 }
 function getProductStockValue(p) {
@@ -2069,10 +2073,10 @@ function renderStock() {
   tbody.innerHTML = filtered.map(p => {
     const qty = getProductQty(p);
     const avgCost = getAvgCost(p);
-    const fee = p.fee || 1000;
+    const fee = getProductSaleFee(p);
     const sp = sellPrice(avgCost, fee);
     const profit = sp - avgCost - fee;
-    const totalVal = avgCost * qty;
+    const totalVal = getProductStockValue(p);
     const type = p.type || 'SC';
     return `<tr>
       <td><span class="mono">${p.code}</span></td>
@@ -2229,9 +2233,9 @@ function addProduct() {
       alert('รหัสสินค้านี้ถูกใช้แล้ว');
       return;
     }
-    Object.assign(p, { code, name, type, weight, tray, fee, laborCost });
+    Object.assign(p, { code, name, type, weight, tray, fee, laborCost, totalCost: cost });
     if (Array.isArray(p.lots)) {
-      p.lots = p.lots.map(lot => ({ ...lot, cost, goldCost: goldBaseCost, laborCost }));
+      p.lots = p.lots.map(lot => ({ ...lot, cost, totalCost: cost, goldCost: goldBaseCost, laborCost }));
     }
     transactions.forEach(t => {
       if (t.productCode === originalCode) t.productCode = code;
@@ -2244,14 +2248,15 @@ function addProduct() {
   }
   
   const existing = products.find(p=>p.code===code);
-  const lot = { cost, goldCost: goldBaseCost, laborCost, qty, date: new Date().toISOString(), source };
+  const lot = { cost, totalCost: cost, goldCost: goldBaseCost, laborCost, qty, date: new Date().toISOString(), source };
   if (existing) {
     existing.lots.push(lot);
     existing.fee = fee;
     existing.laborCost = laborCost;
+    existing.totalCost = cost;
     existing.tray = tray || existing.tray;
   } else {
-    products.push({ code, name, type, weight, tray, fee, laborCost, lots:[lot] });
+    products.push({ code, name, type, weight, tray, fee, laborCost, totalCost: cost, lots:[lot] });
   }
   transactions.push({ type:'buy', productCode:code, productName:name, cost, goldCost:goldBaseCost, laborCost, fee, qty, total:cost*qty, productType:type, productWeight:weight, weightLabel:WEIGHT_LABELS[weight]||weight, date:new Date().toISOString(), source });
   save(); closeModal('addModal'); renderStock(); renderDashboard();
@@ -2319,7 +2324,7 @@ function searchForSale() {
   results.innerHTML = matches.map(p => {
     const qty = getProductQty(p);
     const avgCost = getAvgCost(p);
-    const sp = sellPrice(avgCost, p.fee||1000);
+    const sp = sellPrice(avgCost, getProductSaleFee(p));
     return `<div class="search-item" onclick="selectSaleProduct('${p.code}')">
       <div class="search-item-name">${p.name} <span style="font-size:11px;background:var(--surface2);padding:1px 6px;border-radius:4px;">${qty} ชิ้น</span></div>
       <div class="search-item-meta">${p.code} · ${WEIGHT_LABELS[p.weight]||''} · ขาย ${sp.toLocaleString()} บาท</div>
@@ -2347,9 +2352,9 @@ function updateSalePreview() {
   if (qty > availQty) { document.getElementById('saleQty').value = availQty; return; }
   
   const avgCost = getAvgCost(p);
-  const sp = sellPrice(avgCost, p.fee||1000);
+  const sp = sellPrice(avgCost, getProductSaleFee(p));
   const total = sp * qty - discount;
-  const profit = total - avgCost*qty - (p.fee||1000)*qty;
+  const profit = total - avgCost*qty - (getProductSaleFee(p))*qty;
   
   // FIFO — show which lot will be cut
   let remaining = qty;
@@ -2394,9 +2399,9 @@ function confirmSale() {
   }
   p.lots = p.lots.filter(l=>l.qty>0);
   
-  const sp = sellPrice(avgCost, p.fee||1000);
+  const sp = sellPrice(avgCost, getProductSaleFee(p));
   const total = sp*qty - discount;
-  const profit = total - avgCost*qty - (p.fee||1000)*qty;
+  const profit = total - avgCost*qty - (getProductSaleFee(p))*qty;
   const txnNo = nextTxnNo();
   const customerRecord = customer || customerPhone ? upsertCustomerRecord(customer, customerPhone) : null;
   
@@ -2656,12 +2661,14 @@ function saveLot() {
   if (!goldBaseCost || qty < 0 || Number.isNaN(qty)) { alert('กรุณากรอกต้นทุนและจำนวนให้ถูกต้อง'); return; }
   if (!Array.isArray(p.lots)) p.lots = [];
   if (indexRaw === '') {
-    p.lots.push({ cost, goldCost:goldBaseCost, laborCost, qty, date, source });
+    p.lots.push({ cost, totalCost:cost, goldCost:goldBaseCost, laborCost, qty, date, source });
     p.laborCost = laborCost;
+    p.totalCost = cost;
     transactions.push({ type:'buy', productCode:code, productName:p.name, cost, goldCost:goldBaseCost, laborCost, fee:p.fee||0, qty, total:cost*qty, productType:p.type, productWeight:p.weight, weightLabel:WEIGHT_LABELS[p.weight]||p.weight, date:new Date().toISOString(), source });
   } else {
-    p.lots[Number(indexRaw)] = { ...(p.lots[Number(indexRaw)] || {}), cost, goldCost:goldBaseCost, laborCost, qty, date, source };
+    p.lots[Number(indexRaw)] = { ...(p.lots[Number(indexRaw)] || {}), cost, totalCost:cost, goldCost:goldBaseCost, laborCost, qty, date, source };
     p.laborCost = laborCost;
+    p.totalCost = cost;
   }
   save(); closeModal('lotModal'); renderStock(); renderDashboard(); renderBarcodeList();
   showToast('บันทึกล็อตแล้ว', 'success');
@@ -2706,7 +2713,7 @@ function renderBarcodeList() {
   if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-text">ไม่มีสินค้า</div></div>'; return; }
   el.innerHTML = list.map(p => {
     const avgCost = getAvgCost(p);
-    const sp = sellPrice(avgCost, p.fee||1000);
+    const sp = sellPrice(avgCost, getProductSaleFee(p));
     const bars = generateBarPattern(p.code);
     return `<div class="bc-card">
       <div class="bc-name">${p.name}</div>
