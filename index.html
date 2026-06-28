@@ -1224,7 +1224,7 @@ const fbDb = getFirestore(fbApp);
 window._fb = {
   saveDoc: async (col, id, data) => {
     try { await setDoc(doc(fbDb, col, String(id)), data); }
-    catch(e) { console.error('Save failed:', e); alert('บันทึกไม่สำเร็จ — ตรวจ internet'); }
+    catch(e) { console.error('Save failed:', e); alert('บันทึกไม่สำเร็จ — ตรวจ internet'); throw e; }
   },
   deleteDoc: async (col, id) => {
     try { await deleteDoc(doc(fbDb, col, String(id))); }
@@ -1387,52 +1387,243 @@ const TRAYS_SC = [
 ];
 const TRAYS_FRONT = ['หน้าตู้-01','หน้าตู้-02','หน้าตู้-03','หน้าตู้-04','หน้าตู้-05'];
 
-function save() {
-  // เก็บใน localStorage เป็น cache (กรณี offline)
+let remoteSaveTimer = null;
+let remoteSaveChain = Promise.resolve();
+let remoteSavePending = 0;
+let lastLocalWriteAt = 0;
+let lastCloudSavedAt = 0;
+let lastSaveStatus = '';
+const REMOTE_APPLY_GUARD_MS = 2500;
+const remoteShadow = {
+  customers: new Map(),
+  pawns: new Map(),
+  savings: new Map(),
+  installments: new Map(),
+  transactions: new Map(),
+  products: new Map()
+};
+
+function cloneData(data) {
+  return JSON.parse(JSON.stringify(data || []));
+}
+
+function stableJson(data) {
+  const normalize = (value) => {
+    if (Array.isArray(value)) return value.map(normalize);
+    if (value && typeof value === 'object') {
+      return Object.keys(value).sort().reduce((acc, key) => {
+        if (key === '_docId') return acc;
+        if (key === '_updatedAt') return acc;
+        acc[key] = normalize(value[key]);
+        return acc;
+      }, {});
+    }
+    return value;
+  };
+  return JSON.stringify(normalize(data || {}));
+}
+
+function makeStableDocIds() {
+  customers.forEach((c, i) => {
+    const id = c.id || c.phone || c.name || ('cust_' + i);
+    c.id = id;
+  });
+  pawns.forEach((p, i) => {
+    const id = p._docId || p.id || p.pawnNo || p.ticket || ('pawn_' + i);
+    if (!p.id) p.id = p.ticket || p.pawnNo || id;
+    p._docId = id;
+  });
+  savingsAccounts.forEach((s, i) => {
+    const id = s._docId || s.id || s.accountNo || ('sv_' + i);
+    if (!s.id) s.id = id;
+    s._docId = id;
+  });
+  installmentContracts.forEach((c, i) => {
+    const id = c._docId || c.id || c.contractNo || ('inst_' + i);
+    if (!c.id) c.id = id;
+    if (!c.contractNo) c.contractNo = id;
+    c._docId = id;
+  });
+  transactions.forEach((t, i) => {
+    const id = t._docId || t.id || t.txnNo || ('txn_' + i);
+    if (!t.id) t.id = id;
+    t._docId = id;
+  });
+  products.forEach((p, i) => {
+    const id = p.id || p.code || ('prod_' + i);
+    if (!p.id) p.id = id;
+  });
+}
+
+function getSaveSnapshot() {
+  return {
+    customers: cloneData(customers),
+    pawns: cloneData(pawns),
+    savings: cloneData(savingsAccounts),
+    installments: cloneData(installmentContracts),
+    transactions: cloneData(transactions),
+    products: cloneData(products)
+  };
+}
+
+function stampChangedDocs() {
+  const now = new Date().toISOString();
+  function stamp(col, docs, idGetter) {
+    docs.forEach((doc, i) => {
+      const id = idGetter(doc, i);
+      if (!id) return;
+      if (remoteShadow[col].get(String(id)) !== stableJson(doc)) doc._updatedAt = now;
+    });
+  }
+  stamp('customers', customers, c => c.id);
+  stamp('pawns', pawns, p => p._docId);
+  stamp('savings', savingsAccounts, s => s._docId);
+  stamp('installments', installmentContracts, c => c._docId);
+  stamp('transactions', transactions, t => t._docId);
+  stamp('products', products, p => p.id || p.code);
+}
+
+function getDocTime(doc) {
+  const time = doc && doc._updatedAt ? Date.parse(doc._updatedAt) : 0;
+  return Number.isFinite(time) ? time : 0;
+}
+
+function mergeRemoteWithLocal(col, localItems, remoteItems, idField) {
+  const localMap = new Map();
+  localItems.forEach((item, i) => {
+    const id = item[idField] || item._docId || item.id || item.code || String(i);
+    localMap.set(String(id), item);
+  });
+
+  let keptLocalNewer = false;
+  const merged = remoteItems.map((remoteItem, i) => {
+    const id = remoteItem[idField] || remoteItem._docId || remoteItem.id || remoteItem.code || String(i);
+    const localItem = localMap.get(String(id));
+    if (localItem && getDocTime(localItem) > getDocTime(remoteItem)) {
+      keptLocalNewer = true;
+      return localItem;
+    }
+    return remoteItem;
+  });
+
+  localMap.forEach((localItem, id) => {
+    const existsRemote = remoteItems.some((remoteItem, i) => {
+      const remoteId = remoteItem[idField] || remoteItem._docId || remoteItem.id || remoteItem.code || String(i);
+      return String(remoteId) === id;
+    });
+    if (!existsRemote && getDocTime(localItem) > 0) {
+      keptLocalNewer = true;
+      merged.push(localItem);
+    }
+  });
+
+  if (keptLocalNewer) setTimeout(queueRemoteSave, 300);
+  return merged;
+}
+
+function saveLocalCache() {
   localStorage.setItem('gd_products', JSON.stringify(products));
   localStorage.setItem('gd_transactions', JSON.stringify(transactions));
   localStorage.setItem('gd_pawns', JSON.stringify(pawns));
   localStorage.setItem('gd_savings', JSON.stringify(savingsAccounts));
   localStorage.setItem('gd_installments', JSON.stringify(installmentContracts));
   localStorage.setItem('gd_customers', JSON.stringify(customers));
+}
 
+function loadLocalCache() {
+  try {
+    products = JSON.parse(localStorage.getItem('gd_products') || '[]');
+    transactions = JSON.parse(localStorage.getItem('gd_transactions') || '[]');
+    pawns = JSON.parse(localStorage.getItem('gd_pawns') || '[]');
+    savingsAccounts = JSON.parse(localStorage.getItem('gd_savings') || '[]');
+    installmentContracts = JSON.parse(localStorage.getItem('gd_installments') || '[]');
+    customers = JSON.parse(localStorage.getItem('gd_customers') || '[]');
+  } catch (err) {
+    console.warn('โหลด cache ในเครื่องไม่สำเร็จ:', err);
+    products = [];
+    transactions = [];
+    pawns = [];
+    savingsAccounts = [];
+    installmentContracts = [];
+    customers = [];
+  }
+}
+
+function setSaveStatus(status, type='info') {
+  if (status === lastSaveStatus) return;
+  lastSaveStatus = status;
+  if (status === 'saving') showToast('กำลังบันทึกข้อมูล...', 'info');
+  if (status === 'saved') showToast('บันทึกข้อมูลเรียบร้อย', 'success');
+  if (status === 'error') showToast('บันทึกขึ้นเว็บไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ต', type);
+}
+
+async function pushSnapshotToCloud(snapshot) {
+  const jobs = [];
+  const saved = [];
+  function addChanged(col, id, doc) {
+    if (!id) return;
+    const hash = stableJson(doc);
+    if (remoteShadow[col].get(String(id)) === hash) return;
+    jobs.push(window._fb.saveDoc(col, id, doc));
+    saved.push({ col, id: String(id), hash });
+  }
+  snapshot.customers.forEach(c => addChanged('customers', c.id, c));
+  snapshot.pawns.forEach(p => addChanged('pawns', p._docId, p));
+  snapshot.savings.forEach(s => addChanged('savings', s._docId, s));
+  snapshot.installments.forEach(c => addChanged('installments', c._docId, c));
+  snapshot.transactions.forEach(t => addChanged('transactions', t._docId, t));
+  snapshot.products.forEach(p => addChanged('products', p.id || p.code, p));
+  if (!jobs.length) return 0;
+  await Promise.all(jobs);
+  saved.forEach(item => remoteShadow[item.col].set(item.id, item.hash));
+  return jobs.length;
+}
+
+function queueRemoteSave() {
   if (!window._fbReady) return;
+  clearTimeout(remoteSaveTimer);
+  remoteSaveTimer = setTimeout(() => {
+    remoteSaveTimer = null;
+    const snapshot = getSaveSnapshot();
+    remoteSavePending++;
+    setSaveStatus('saving');
+    remoteSaveChain = remoteSaveChain
+      .catch(() => {})
+      .then(() => pushSnapshotToCloud(snapshot))
+      .then((count) => {
+        lastCloudSavedAt = Date.now();
+        if (count > 0) setSaveStatus('saved');
+      })
+      .catch(err => {
+        console.error('Cloud save queue failed:', err);
+        setSaveStatus('error', 'error');
+      })
+      .finally(() => {
+        remoteSavePending = Math.max(0, remoteSavePending - 1);
+      });
+  }, 200);
+}
 
-  customers.forEach(c => {
-    const id = c.id || c.phone || ('cust_' + (c.name || 'unknown') + '_' + Date.now());
-    if (!c.id) c.id = id;
-    window._fb.saveDoc('customers', id, c);
+function shouldIgnoreRemoteSnapshot() {
+  return remoteSavePending > 0 || (Date.now() - lastLocalWriteAt) < REMOTE_APPLY_GUARD_MS;
+}
+
+function rememberRemoteCollection(col, items, idField) {
+  remoteShadow[col].clear();
+  items.forEach((item, i) => {
+    const id = item[idField] || item._docId || item.id || item.code || String(i);
+    remoteShadow[col].set(String(id), stableJson(item));
   });
-  pawns.forEach(p => {
-    const id = p._docId || p.id || p.pawnNo || p.ticket || ('pawn_' + Date.now());
-    if (!p.id) p.id = p.ticket || p.pawnNo || id;
-    if (!p._docId) p._docId = id;
-    window._fb.saveDoc('pawns', p._docId, p);
-  });
-  savingsAccounts.forEach(s => {
-    const id = s._docId || s.id || s.accountNo || ('sv_' + Date.now());
-    if (!s.id) s.id = id;
-    if (!s._docId) s._docId = id;
-    window._fb.saveDoc('savings', s._docId, s);
-  });
-  installmentContracts.forEach(c => {
-    const id = c._docId || c.id || c.contractNo || ('inst_' + Date.now());
-    if (!c.id) c.id = id;
-    if (!c.contractNo) c.contractNo = id;
-    if (!c._docId) c._docId = id;
-    window._fb.saveDoc('installments', c._docId, c);
-  });
-  transactions.forEach(t => {
-    const id = t._docId || t.id || t.txnNo || ('txn_' + Date.now());
-    if (!t.id) t.id = id;
-    if (!t._docId) t._docId = id;
-    window._fb.saveDoc('transactions', t._docId, t);
-  });
-  products.forEach(p => {
-    const id = p.id || p.code || ('prod_' + Date.now());
-    if (!p.id) p.id = id;
-    window._fb.saveDoc('products', id, p);
-  });
+}
+
+function save() {
+  makeStableDocIds();
+  stampChangedDocs();
+  // เก็บใน localStorage เป็น cache (กรณี offline)
+  saveLocalCache();
+
+  lastLocalWriteAt = Date.now();
+  queueRemoteSave();
 }
 
 function setupRealtimeSync() {
@@ -1442,34 +1633,58 @@ function setupRealtimeSync() {
   }
 
   window._fb.listen('products', (items) => {
-    products = items;
+    if (shouldIgnoreRemoteSnapshot()) return;
+    const merged = mergeRemoteWithLocal('products', products, items, 'code');
+    rememberRemoteCollection('products', items, 'code');
+    products = merged;
+    saveLocalCache();
     if (typeof renderStock === 'function') renderStock();
     if (typeof renderDashboard === 'function') renderDashboard();
   });
 
   window._fb.listen('transactions', (items) => {
-    transactions = items;
+    if (shouldIgnoreRemoteSnapshot()) return;
+    const merged = mergeRemoteWithLocal('transactions', transactions, items, '_docId');
+    rememberRemoteCollection('transactions', items, '_docId');
+    transactions = merged;
+    saveLocalCache();
     if (typeof renderHistory === 'function') renderHistory();
   });
 
   window._fb.listen('pawns', (items) => {
-    pawns = items;
+    if (shouldIgnoreRemoteSnapshot()) return;
+    const merged = mergeRemoteWithLocal('pawns', pawns, items, '_docId');
+    rememberRemoteCollection('pawns', items, '_docId');
+    pawns = merged;
+    saveLocalCache();
     if (typeof renderPawn === 'function') renderPawn();
   });
 
   window._fb.listen('savings', (items) => {
-    savingsAccounts = items;
+    if (shouldIgnoreRemoteSnapshot()) return;
+    const merged = mergeRemoteWithLocal('savings', savingsAccounts, items, '_docId');
+    rememberRemoteCollection('savings', items, '_docId');
+    savingsAccounts = merged;
+    saveLocalCache();
     if (typeof renderSavings === 'function') renderSavings();
   });
 
   window._fb.listen('installments', (items) => {
-    installmentContracts = items;
+    if (shouldIgnoreRemoteSnapshot()) return;
+    const merged = mergeRemoteWithLocal('installments', installmentContracts, items, '_docId');
+    rememberRemoteCollection('installments', items, '_docId');
+    installmentContracts = merged;
+    saveLocalCache();
     if (typeof renderInstallments === 'function') renderInstallments();
     if (typeof renderDashboard === 'function') renderDashboard();
   });
 
   window._fb.listen('customers', (items) => {
-    customers = items;
+    if (shouldIgnoreRemoteSnapshot()) return;
+    const merged = mergeRemoteWithLocal('customers', customers, items, 'id');
+    rememberRemoteCollection('customers', items, 'id');
+    customers = merged;
+    saveLocalCache();
     if (typeof renderCRM === 'function') renderCRM();
   });
 
@@ -1481,6 +1696,13 @@ window.addEventListener('load', () => {
   setTimeout(setupRealtimeSync, 1000);
   setTimeout(applyShopSettings, 100);
   setTimeout(checkAutoBackupReminder, 5000);
+});
+
+window.addEventListener('beforeunload', (event) => {
+  if (remoteSavePending > 0 || remoteSaveTimer) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
 });
 
 // ============ NAV ============
@@ -1850,9 +2072,14 @@ function weightInBahtUnits(w) {
 function goldCost(w) { return spot * 0.965 * (weightInBahtUnits(w) / 4); }
 function sellPrice(cost, fee) { return Math.ceil((cost + fee) / 50) * 50; }
 function buyBackPrice(w, spread) { return Math.floor((goldCost(w) - spread) / 50) * 50; }
+function hasExplicitLaborCost(p) {
+  if (parseFloat(p?.laborCost) > 0) return true;
+  if (parseFloat(p?.totalCost) > 0) return true;
+  return Array.isArray(p?.lots) && p.lots.some(lot => parseFloat(lot?.laborCost) > 0 || parseFloat(lot?.totalCost) > 0);
+}
 function getProductSaleFee(p) {
   const fee = parseFloat(p?.fee);
-  return Number.isFinite(fee) ? fee : 0;
+  return Number.isFinite(fee) && hasExplicitLaborCost(p) ? fee : 0;
 }
 
 // ============ DASHBOARD ============
@@ -2166,12 +2393,14 @@ function editProduct(code) {
   document.getElementById('addWeight').value = String(p.weight ?? '4');
   document.getElementById('addTray').value = p.tray || '';
   const savedFee = parseFloat(p.fee) || 0;
-  const avgLaborCost = getAvgLotField(p, 'laborCost') || parseFloat(p.laborCost) || savedFee || 0;
+  const explicitLaborCost = getAvgLotField(p, 'laborCost') || parseFloat(p.laborCost) || 0;
+  const avgLaborCost = explicitLaborCost || savedFee || 0;
+  const saleFee = getProductSaleFee(p);
   const avgGoldCost = getAvgLotField(p, 'goldCost') || Math.max(0, (getAvgCost(p) || goldCost(p.weight || 4)) - avgLaborCost);
   document.getElementById('addCost').value = Math.round(avgGoldCost);
   document.getElementById('addLaborCost').value = Math.round(avgLaborCost);
   document.getElementById('addTotalCost').value = Math.round(avgGoldCost + avgLaborCost);
-  document.getElementById('addFee').value = 0;
+  document.getElementById('addFee').value = Math.round(saleFee);
   document.getElementById('addQty').value = getProductQty(p);
   document.getElementById('addQty').disabled = true;
   document.getElementById('addSource').value = 'ซัพพลายเออร์';
@@ -4384,6 +4613,7 @@ function closeSavings(id) {
 }
 
 // ============ INIT ============
+loadLocalCache();
 seedIfEmpty();
 checkSession();
 renderDashboard();
