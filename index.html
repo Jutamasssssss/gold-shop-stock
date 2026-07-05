@@ -944,6 +944,10 @@
         <input type="number" id="savPayTopup" placeholder="เช่น 100" oninput="calcSavPay()">
       </div>
       <div class="form-group full">
+        <label>วันที่ออม</label>
+        <input type="date" id="savPayDate">
+      </div>
+      <div class="form-group full">
         <label>ราคาทองวันนี้ (บาท/บาท) — ดึงจาก SPOT หน้าร้านอัตโนมัติ</label>
         <input type="number" id="savPayGoldPrice" oninput="calcSavPay()">
       </div>
@@ -3894,6 +3898,7 @@ function addSavingsPayment(id) {
   document.getElementById('savPayIndex').value = '';
   document.getElementById('savPayDeposit').value = '';
   document.getElementById('savPayTopup').value = sv.topupPct ?? 100;
+  document.getElementById('savPayDate').value = isoToDateInput(new Date().toISOString());
   document.getElementById('savPayGoldPrice').value = spot;
   document.getElementById('savPayCalc').style.display = 'none';
   document.getElementById('savPaySaveBtn').textContent = '✓ บันทึก + แสดงสรุป';
@@ -3911,6 +3916,7 @@ function editSavingsPayment(id, index) {
   document.getElementById('savPayIndex').value = index;
   document.getElementById('savPayDeposit').value = pay.deposit || 0;
   document.getElementById('savPayTopup').value = pay.topupPct ?? (pay.deposit ? Math.round((pay.bonus || 0) / pay.deposit * 100) : 0);
+  document.getElementById('savPayDate').value = isoToDateInput(pay.date);
   document.getElementById('savPayGoldPrice').value = pay.goldPrice || spot;
   document.getElementById('savPaySaveBtn').textContent = 'บันทึกการแก้ไข';
   document.getElementById('savPayInfo').innerHTML = `<strong>${sv.customer}</strong> &nbsp;·&nbsp; แก้ไขงวดที่ <strong>${Number(index)+1}</strong>`;
@@ -3925,6 +3931,7 @@ function confirmSavingsPayment() {
   const editIndexRaw = document.getElementById('savPayIndex').value;
   const deposit = parseFloat(document.getElementById('savPayDeposit').value)||0;
   const topupPct = parseFloat(document.getElementById('savPayTopup').value)||0;
+  const paymentDate = dateInputToIso(document.getElementById('savPayDate').value);
   const goldPrice = parseFloat(document.getElementById('savPayGoldPrice').value)||spot;
   if (!deposit) { alert('กรุณากรอกยอดที่ลูกค้าฝาก'); return; }
   const bonus = Math.round(deposit * topupPct / 100);
@@ -3937,7 +3944,7 @@ function confirmSavingsPayment() {
     topupPct,
     goldPrice,
     goldWeight,
-    date: editIndexRaw === '' ? new Date().toISOString() : (sv.payments[Number(editIndexRaw)]?.date || new Date().toISOString())
+    date: paymentDate
   };
   if (editIndexRaw === '') {
     sv.payments.push(payment);
@@ -3954,7 +3961,7 @@ function confirmSavingsPayment() {
       customerId: sv.customerId || '',
       goldPrice,
       goldWeight,
-      date:new Date().toISOString()
+      date: paymentDate
     });
   } else {
     sv.payments[Number(editIndexRaw)] = payment;
@@ -4012,14 +4019,6 @@ function getSavingsPaymentsChronological(sv) {
     .map((payment, originalIndex) => ({ payment, originalIndex }))
     .sort((a, b) => savingsPaymentTime(a.payment) - savingsPaymentTime(b.payment) || a.originalIndex - b.originalIndex)
     .map((item, sortedIndex) => ({ ...item, periodNo: sortedIndex + 1 }));
-}
-
-function getSavingsPaymentDisplayDate(sv, chronologicalPayments, periodNo, fallbackDate) {
-  if (!chronologicalPayments.length) return new Date(fallbackDate || Date.now());
-  const latest = chronologicalPayments[chronologicalPayments.length - 1];
-  const anchorDate = latest?.payment?.date || fallbackDate || new Date().toISOString();
-  const periodsBack = (latest?.periodNo || chronologicalPayments.length) - periodNo;
-  return addPeriod(anchorDate, sv?.period || 'monthly', -periodsBack);
 }
 
 // ============ INSTALLMENT GOLD ============
@@ -4468,8 +4467,7 @@ function showSavingsSummary(id, mode) {
 
   // payment rows — แค่วันที่ + ฝาก + โบนัส + รวม (ไม่มีราคาทอง)
   const paymentRows = chronologicalPayments.slice(-5).reverse().map(({ payment:p, periodNo }) => {
-    const displayDate = getSavingsPaymentDisplayDate(sv, chronologicalPayments, periodNo, p.date);
-    const d = displayDate.toLocaleDateString('th-TH',{month:'short',day:'numeric'});
+    const d = new Date(p.date || Date.now()).toLocaleDateString('th-TH',{month:'short',day:'numeric'});
     return `<tr>
       <td style="padding:8px 10px;font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;">งวดที่ ${periodNo} &nbsp; ${d}</td>
       <td style="padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f0e0e0;">${(p.deposit||0).toLocaleString()}</td>
