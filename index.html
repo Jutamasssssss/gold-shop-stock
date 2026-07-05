@@ -4014,6 +4014,14 @@ function getSavingsPaymentsChronological(sv) {
     .map((item, sortedIndex) => ({ ...item, periodNo: sortedIndex + 1 }));
 }
 
+function getSavingsPaymentDisplayDate(sv, chronologicalPayments, periodNo, fallbackDate) {
+  if (!chronologicalPayments.length) return new Date(fallbackDate || Date.now());
+  const latest = chronologicalPayments[chronologicalPayments.length - 1];
+  const anchorDate = latest?.payment?.date || fallbackDate || new Date().toISOString();
+  const periodsBack = (latest?.periodNo || chronologicalPayments.length) - periodNo;
+  return addPeriod(anchorDate, sv?.period || 'monthly', -periodsBack);
+}
+
 // ============ INSTALLMENT GOLD ============
 function getInstallmentKey(c) {
   return c?.contractNo || c?.id || '';
@@ -4460,7 +4468,8 @@ function showSavingsSummary(id, mode) {
 
   // payment rows — แค่วันที่ + ฝาก + โบนัส + รวม (ไม่มีราคาทอง)
   const paymentRows = chronologicalPayments.slice(-5).reverse().map(({ payment:p, periodNo }) => {
-    const d = new Date(p.date).toLocaleDateString('th-TH',{month:'short',day:'numeric'});
+    const displayDate = getSavingsPaymentDisplayDate(sv, chronologicalPayments, periodNo, p.date);
+    const d = displayDate.toLocaleDateString('th-TH',{month:'short',day:'numeric'});
     return `<tr>
       <td style="padding:8px 10px;font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;">งวดที่ ${periodNo} &nbsp; ${d}</td>
       <td style="padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f0e0e0;">${(p.deposit||0).toLocaleString()}</td>
