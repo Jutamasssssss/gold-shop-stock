@@ -4002,6 +4002,18 @@ function deleteSavings(id) {
   showToast(`ลบบัญชี ${id} เรียบร้อย`, 'info');
 }
 
+function savingsPaymentTime(payment) {
+  const time = Date.parse(payment?.date || '');
+  return Number.isFinite(time) ? time : 0;
+}
+
+function getSavingsPaymentsChronological(sv) {
+  return (sv?.payments || [])
+    .map((payment, originalIndex) => ({ payment, originalIndex }))
+    .sort((a, b) => savingsPaymentTime(a.payment) - savingsPaymentTime(b.payment) || a.originalIndex - b.originalIndex)
+    .map((item, sortedIndex) => ({ ...item, periodNo: sortedIndex + 1 }));
+}
+
 // ============ INSTALLMENT GOLD ============
 function getInstallmentKey(c) {
   return c?.contractNo || c?.id || '';
@@ -4435,9 +4447,10 @@ function showInstallmentContract(id) {
 function showSavingsSummary(id, mode) {
   const sv = savingsAccounts.find(x=>x.id===id);
   if (!sv) return;
+  const chronologicalPayments = getSavingsPaymentsChronological(sv);
   const totalDeposit = sv.payments.reduce((a,p)=>a+(p.deposit||0),0);
   const totalBonus   = sv.payments.reduce((a,p)=>a+(p.bonus||0),0);
-  const lastPay      = sv.payments.length ? sv.payments[sv.payments.length-1] : null;
+  const lastPay      = chronologicalPayments.length ? chronologicalPayments[chronologicalPayments.length-1].payment : null;
   const periodTh     = sv.period==='daily' ? 'รายวัน' : sv.period==='weekly' ? 'รายสัปดาห์' : 'รายเดือน';
   const dateStr      = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
   const goldPriceStr = (lastPay ? lastPay.goldPrice : spot).toLocaleString();
@@ -4446,10 +4459,10 @@ function showSavingsSummary(id, mode) {
   const bonusPct   = Math.round(totalBonus/maxBar*100);
 
   // payment rows — แค่วันที่ + ฝาก + โบนัส + รวม (ไม่มีราคาทอง)
-  const paymentRows = sv.payments.slice(-5).reverse().map((p,i) => {
+  const paymentRows = chronologicalPayments.slice(-5).reverse().map(({ payment:p, periodNo }) => {
     const d = new Date(p.date).toLocaleDateString('th-TH',{month:'short',day:'numeric'});
     return `<tr>
-      <td style="padding:8px 10px;font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;">งวดที่ ${sv.payments.length-i} &nbsp; ${d}</td>
+      <td style="padding:8px 10px;font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;">งวดที่ ${periodNo} &nbsp; ${d}</td>
       <td style="padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f0e0e0;">${(p.deposit||0).toLocaleString()}</td>
       <td style="padding:8px 10px;font-size:13px;text-align:right;color:#B83232;border-bottom:1px solid #f0e0e0;">+${(p.bonus||0).toLocaleString()}</td>
       <td style="padding:8px 10px;font-size:13px;font-weight:700;text-align:right;border-bottom:1px solid #f0e0e0;">${(p.total||0).toLocaleString()}</td>
@@ -4571,9 +4584,10 @@ function showSavingsSummary(id, mode) {
 function sendLineSummaryText(id) {
   const sv = savingsAccounts.find(x=>x.id===id);
   if (!sv) return;
+  const chronologicalPayments = getSavingsPaymentsChronological(sv);
   const totalDeposit = sv.payments.reduce((a,p)=>a+(p.deposit||0),0);
   const totalBonus   = sv.payments.reduce((a,p)=>a+(p.bonus||0),0);
-  const lastPay      = sv.payments.length ? sv.payments[sv.payments.length-1] : null;
+  const lastPay      = chronologicalPayments.length ? chronologicalPayments[chronologicalPayments.length-1].payment : null;
   const periodTh     = sv.period==='daily' ? 'รายวัน' : sv.period==='weekly' ? 'รายสัปดาห์' : 'รายเดือน';
   const dateStr      = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
   const gpStr        = lastPay ? lastPay.goldPrice.toLocaleString() : spot.toLocaleString();
