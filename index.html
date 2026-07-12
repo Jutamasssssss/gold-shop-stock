@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<!-- build: savings-payment-date-field-2026-07-05 -->
+<!-- build: stability-regression-2026-07-13 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบสต็อกทอง — ห้างทองร่ำรวยดี</title>
@@ -253,6 +253,46 @@
     .bc-card { border:1px solid #ccc; page-break-inside:avoid; }
     .receipt { width:100%; }
   }
+
+  @media (max-width: 760px) {
+    .app { display:block; min-height:100vh; }
+    .sidebar { position:sticky; top:0; z-index:90; width:100%; height:auto; max-height:none; overflow:visible; }
+    .sidebar-logo { padding:10px 14px 8px; display:flex; align-items:center; justify-content:space-between; }
+    .sidebar-logo p { display:none; }
+    .sidebar-spot { padding:8px 14px; display:grid; grid-template-columns:1fr 132px; align-items:center; gap:8px; }
+    .sidebar-spot label { margin:0; }
+    .sidebar-spot input { font-size:14px; padding:5px 7px; }
+    #spotStatus { grid-column:1/-1; margin-top:0 !important; }
+    nav { display:flex; overflow-x:auto; padding:0; scrollbar-width:none; border-top:1px solid rgba(255,255,255,0.06); }
+    nav::-webkit-scrollbar { display:none; }
+    .nav-item { flex:0 0 auto; padding:9px 13px; border-left:none; border-bottom:3px solid transparent; font-size:12px; }
+    .nav-item.active { border-left:none; border-bottom-color:var(--gold); }
+    .nav-icon { width:auto; }
+    .main { min-height:calc(100vh - 140px); overflow:visible; }
+    .page { padding:18px 14px 28px; width:100%; }
+    .page-header { align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+    .page-header > div:last-child { display:flex; gap:8px; flex-wrap:wrap; width:100%; }
+    .page-header input, .page-header select { min-width:0; max-width:100%; flex:1 1 150px; }
+    .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .metric { padding:13px; min-width:0; }
+    .metric-value { font-size:19px; overflow-wrap:anywhere; }
+    .form-grid { grid-template-columns:1fr; }
+    .form-group.full { grid-column:auto; }
+    .modal-overlay { align-items:flex-start; padding:10px; overflow-y:auto; }
+    .modal { width:100% !important; max-width:100%; max-height:none; padding:20px 16px; margin:auto 0; }
+    .modal-footer { position:sticky; bottom:-20px; background:var(--surface); padding:12px 0 4px; }
+    .tbl-wrap { border-radius:8px; }
+    .tabs { max-width:100%; overflow-x:auto; }
+    .tab { flex:0 0 auto; }
+    .tx-row { align-items:flex-start; flex-wrap:wrap; }
+    .tx-meta { min-width:180px; }
+    .crm-grid { grid-template-columns:1fr; }
+  }
+
+  @media (max-width: 390px) {
+    .metric-grid { grid-template-columns:1fr; }
+    .sidebar-spot { grid-template-columns:1fr 118px; }
+  }
 </style>
 </head>
 <body>
@@ -344,8 +384,8 @@
     </div>
     <div class="sidebar-spot">
       <label>SPOT วันนี้ (บาท/บาท) <button class="spot-refresh" onclick="fetchSpot()" title="ดึงราคาล่าสุด">↻</button></label>
-      <input type="number" id="spotInput" value="72230" onchange="updateSpot()">
-      <div id="spotStatus" style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:3px;">ป้อนเองหรือกด ↻ ดึงราคา</div>
+      <input type="number" id="spotInput" value="65000" min="1" onchange="updateSpot()">
+      <div id="spotStatus" style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:3px;">กำลังโหลดราคาสมาคมฯ...</div>
     </div>
     <nav>
       <div class="nav-item active" onclick="showPage('dashboard')">
@@ -452,6 +492,7 @@
           <option value="GB">ทองแท่ง</option>
         </select>
       </div>
+      <div class="alert" id="stockCostAlert" style="display:none;"></div>
       <div class="tbl-wrap">
         <table>
           <thead>
@@ -708,7 +749,7 @@
         <div><div class="page-title">CRM ลูกค้า</div><div class="page-sub">ประวัติซื้อขาย จำนำ ออมทอง</div></div>
         <button class="btn btn-primary" onclick="openCustomerVisitModal()">+ บันทึกการติดต่อ</button>
       </div>
-      <input type="text" id="crmSearch" placeholder="ค้นหาชื่อลูกค้า..." style="width:260px;margin-bottom:16px;" oninput="renderCRM()">
+      <input type="text" id="crmSearch" placeholder="ค้นหาชื่อ / เบอร์โทร..." style="width:260px;margin-bottom:16px;" oninput="renderCRM()">
       <div class="crm-grid" id="crmGrid"></div>
     </div>
 
@@ -743,9 +784,9 @@
       </div>
       <div class="form-group">
         <label>น้ำหนัก</label>
-        <select id="addWeight" onchange="calcAddPrice()">
+        <select id="addWeight" onchange="suggestGoldCostForWeight()">
           <optgroup label="— หน่วยกรัม —">
-            <option value="g0.3">0.3 กรัม</option>
+            <option value="g0.3" selected>0.3 กรัม</option>
             <option value="g0.5">0.5 กรัม</option>
             <option value="g1">1 กรัม</option>
           </optgroup>
@@ -755,7 +796,7 @@
             <option value="2">2 สลึง</option>
           </optgroup>
           <optgroup label="— หน่วยบาท —">
-            <option value="4" selected>1 บาท</option>
+            <option value="4">1 บาท</option>
             <option value="8">2 บาท</option>
             <option value="12">3 บาท</option>
             <option value="16">4 บาท</option>
@@ -822,11 +863,15 @@
       </div>
       <div class="form-group">
         <label>ต้นทุนทอง</label>
-        <input type="number" id="lotCost">
+        <input type="number" id="lotCost" min="0" oninput="calcLotCost()">
       </div>
       <div class="form-group">
         <label>ต้นทุนค่ากำเหน็จ</label>
-        <input type="number" id="lotLaborCost" value="0">
+        <input type="number" id="lotLaborCost" value="0" min="0" oninput="calcLotCost()">
+      </div>
+      <div class="form-group full">
+        <label>ต้นทุนรวมจริงต่อชิ้น</label>
+        <input type="number" id="lotTotalCost" value="0" readonly style="background:var(--surface2);font-weight:600;">
       </div>
       <div class="form-group">
         <label>จำนวน</label>
@@ -1219,14 +1264,14 @@ const firebaseConfig = {
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import {
-  getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc
+  getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, runTransaction
 } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
 const fbApp = initializeApp(firebaseConfig);
 const fbDb = getFirestore(fbApp);
 
 // ทำให้ไฟล์ส่วนล่าง (script ปกติ) เรียกใช้ได้
-window._fb = {
+const remoteFirebase = {
   saveDoc: async (col, id, data) => {
     try { await setDoc(doc(fbDb, col, String(id)), data); }
     catch(e) { console.error('Save failed:', e); alert('บันทึกไม่สำเร็จ — ตรวจ internet'); throw e; }
@@ -1240,15 +1285,39 @@ window._fb = {
       const items = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
       callback(items);
     });
+  },
+  listenDoc: (col, id, callback) => {
+    return onSnapshot(doc(fbDb, col, String(id)), (snap) => {
+      callback(snap.exists() ? { ...snap.data(), _docId: snap.id } : null);
+    });
+  },
+  nextSequence: async (key, minimum=0) => {
+    const ref = doc(fbDb, 'settings', 'counters');
+    return runTransaction(fbDb, async (tx) => {
+      const snap = await tx.get(ref);
+      const current = Number(snap.exists() ? snap.data()[key] : 0) || 0;
+      const next = Math.max(current, Number(minimum) || 0) + 1;
+      tx.set(ref, { [key]: next, updatedAt: new Date().toISOString() }, { merge:true });
+      return next;
+    });
   }
 };
+const qaMode = new URLSearchParams(location.search).get('qa') === '1' && ['localhost','127.0.0.1'].includes(location.hostname);
+window._fb = qaMode ? {
+  saveDoc: async () => {},
+  deleteDoc: async () => {},
+  listen: (_col, callback) => { setTimeout(() => callback([]), 0); return () => {}; },
+  listenDoc: (_col, _id, callback) => { setTimeout(() => callback(null), 0); return () => {}; },
+  nextSequence: async (_key, minimum=0) => Number(minimum || 0) + 1
+} : remoteFirebase;
 window._fbReady = true;
 </script>
 
 <script>
 // ============ STATE ============
 const GOLD_PRICE_API_URL = 'https://ramruaydee-linebot-production.up.railway.app/api/gold-price';
-let spot = 72230;
+let spot = parseFloat(localStorage.getItem('gd_spot') || '') || 65000;
+let spotUpdatedAt = localStorage.getItem('gd_spot_updated_at') || '';
 let products = [];
 let transactions = [];
 let pawns = [];
@@ -1407,6 +1476,18 @@ const remoteShadow = {
   transactions: new Map(),
   products: new Map()
 };
+const DATA_COLLECTIONS = ['products','transactions','pawns','savings','installments','customers'];
+const remoteCollectionsReady = new Set();
+
+function cloudInitialSyncReady() {
+  return DATA_COLLECTIONS.every(col => remoteCollectionsReady.has(col));
+}
+
+function acceptRemoteSnapshot(col) {
+  const isInitial = !remoteCollectionsReady.has(col);
+  if (isInitial) remoteCollectionsReady.add(col);
+  return isInitial || !shouldIgnoreRemoteSnapshot();
+}
 
 function cloneData(data) {
   return JSON.parse(JSON.stringify(data || []));
@@ -1477,6 +1558,8 @@ function stampChangedDocs() {
     docs.forEach((doc, i) => {
       const id = idGetter(doc, i);
       if (!id) return;
+      // ก่อนรับ snapshot แรก ห้ามประทับเวลาใหม่ทับ cache เดิมทั้งชุด
+      if (!remoteCollectionsReady.has(col) && doc._updatedAt) return;
       if (remoteShadow[col].get(String(id)) !== stableJson(doc)) doc._updatedAt = now;
     });
   }
@@ -1535,6 +1618,18 @@ function saveLocalCache() {
   localStorage.setItem('gd_customers', JSON.stringify(customers));
 }
 
+function normalizeAppCollections() {
+  products = (Array.isArray(products) ? products : []).map(p => ({ ...p, lots:Array.isArray(p?.lots) ? p.lots : [] }));
+  transactions = Array.isArray(transactions) ? transactions : [];
+  pawns = Array.isArray(pawns) ? pawns : [];
+  savingsAccounts = (Array.isArray(savingsAccounts) ? savingsAccounts : []).map(sv => {
+    const payments = Array.isArray(sv?.payments) ? sv.payments : [];
+    return { ...sv, payments, saved:payments.reduce((sum,p)=>sum+Number(p?.total || 0),0) };
+  });
+  installmentContracts = (Array.isArray(installmentContracts) ? installmentContracts : []).map(c => ({ ...c, payments:Array.isArray(c?.payments) ? c.payments : [] }));
+  customers = (Array.isArray(customers) ? customers : []).map(c => ({ ...c, transactions:Array.isArray(c?.transactions) ? c.transactions : [] }));
+}
+
 function loadLocalCache() {
   try {
     products = JSON.parse(localStorage.getItem('gd_products') || '[]');
@@ -1543,6 +1638,7 @@ function loadLocalCache() {
     savingsAccounts = JSON.parse(localStorage.getItem('gd_savings') || '[]');
     installmentContracts = JSON.parse(localStorage.getItem('gd_installments') || '[]');
     customers = JSON.parse(localStorage.getItem('gd_customers') || '[]');
+    normalizeAppCollections();
   } catch (err) {
     console.warn('โหลด cache ในเครื่องไม่สำเร็จ:', err);
     products = [];
@@ -1588,6 +1684,10 @@ function queueRemoteSave() {
   if (!window._fbReady) return;
   clearTimeout(remoteSaveTimer);
   remoteSaveTimer = setTimeout(() => {
+    if (!cloudInitialSyncReady()) {
+      remoteSaveTimer = setTimeout(queueRemoteSave, 500);
+      return;
+    }
     remoteSaveTimer = null;
     const snapshot = getSaveSnapshot();
     remoteSavePending++;
@@ -1638,59 +1738,74 @@ function setupRealtimeSync() {
   }
 
   window._fb.listen('products', (items) => {
-    if (shouldIgnoreRemoteSnapshot()) return;
+    if (!acceptRemoteSnapshot('products')) return;
     const merged = mergeRemoteWithLocal('products', products, items, 'code');
     rememberRemoteCollection('products', items, 'code');
     products = merged;
+    normalizeAppCollections();
     saveLocalCache();
     if (typeof renderStock === 'function') renderStock();
     if (typeof renderDashboard === 'function') renderDashboard();
   });
 
   window._fb.listen('transactions', (items) => {
-    if (shouldIgnoreRemoteSnapshot()) return;
+    if (!acceptRemoteSnapshot('transactions')) return;
     const merged = mergeRemoteWithLocal('transactions', transactions, items, '_docId');
     rememberRemoteCollection('transactions', items, '_docId');
     transactions = merged;
+    normalizeAppCollections();
     saveLocalCache();
     if (typeof renderHistory === 'function') renderHistory();
   });
 
   window._fb.listen('pawns', (items) => {
-    if (shouldIgnoreRemoteSnapshot()) return;
+    if (!acceptRemoteSnapshot('pawns')) return;
     const merged = mergeRemoteWithLocal('pawns', pawns, items, '_docId');
     rememberRemoteCollection('pawns', items, '_docId');
     pawns = merged;
+    normalizeAppCollections();
     saveLocalCache();
     if (typeof renderPawn === 'function') renderPawn();
   });
 
   window._fb.listen('savings', (items) => {
-    if (shouldIgnoreRemoteSnapshot()) return;
+    if (!acceptRemoteSnapshot('savings')) return;
     const merged = mergeRemoteWithLocal('savings', savingsAccounts, items, '_docId');
     rememberRemoteCollection('savings', items, '_docId');
     savingsAccounts = merged;
+    normalizeAppCollections();
     saveLocalCache();
     if (typeof renderSavings === 'function') renderSavings();
   });
 
   window._fb.listen('installments', (items) => {
-    if (shouldIgnoreRemoteSnapshot()) return;
+    if (!acceptRemoteSnapshot('installments')) return;
     const merged = mergeRemoteWithLocal('installments', installmentContracts, items, '_docId');
     rememberRemoteCollection('installments', items, '_docId');
     installmentContracts = merged;
+    normalizeAppCollections();
     saveLocalCache();
     if (typeof renderInstallments === 'function') renderInstallments();
     if (typeof renderDashboard === 'function') renderDashboard();
   });
 
   window._fb.listen('customers', (items) => {
-    if (shouldIgnoreRemoteSnapshot()) return;
+    if (!acceptRemoteSnapshot('customers')) return;
     const merged = mergeRemoteWithLocal('customers', customers, items, 'id');
     rememberRemoteCollection('customers', items, 'id');
     customers = merged;
+    normalizeAppCollections();
     saveLocalCache();
     if (typeof renderCRM === 'function') renderCRM();
+  });
+
+  window._fb.listenDoc('settings', 'spot', (data) => {
+    const value = Number(data?.value || data?.sell || 0);
+    const remoteTime = Date.parse(data?.updatedAt || '') || 0;
+    const localTime = Date.parse(spotUpdatedAt || '') || 0;
+    if (value > 0 && remoteTime >= localTime) {
+      applySpotPrice(value, data?.dateText || '', data?.timeText || '', data?.updatedAt || '');
+    }
   });
 
   console.log('Real-time sync activated');
@@ -1699,6 +1814,7 @@ function setupRealtimeSync() {
 // เริ่ม sync เมื่อหน้าโหลดเสร็จ
 window.addEventListener('load', () => {
   setTimeout(setupRealtimeSync, 1000);
+  setTimeout(fetchSpot, 500);
   setTimeout(applyShopSettings, 100);
   setTimeout(checkAutoBackupReminder, 5000);
 });
@@ -2018,16 +2134,36 @@ function showBackupReminder(msg) {
 }
 
 // ============ SPOT ============
+function applySpotPrice(value, dateText='', timeText='', updatedAt='') {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return false;
+  spot = parsed;
+  spotUpdatedAt = updatedAt || new Date().toISOString();
+  localStorage.setItem('gd_spot', String(spot));
+  localStorage.setItem('gd_spot_updated_at', spotUpdatedAt);
+  const input = document.getElementById('spotInput');
+  const status = document.getElementById('spotStatus');
+  if (input) input.value = spot;
+  if (status && (dateText || timeText)) status.textContent = `สมาคมฯ ${dateText} ${timeText}`.trim();
+  renderDashboard();
+  return true;
+}
+
 function updateSpot() {
-  spot = parseFloat(document.getElementById('spotInput').value) || 72230;
+  const value = parseFloat(document.getElementById('spotInput').value);
+  if (!Number.isFinite(value) || value <= 0) {
+    showToast('กรุณากรอกราคาทองที่มากกว่า 0 บาท', 'error');
+    document.getElementById('spotInput').value = spot;
+    return;
+  }
+  applySpotPrice(value, 'กำหนดเอง', '', new Date().toISOString());
   if (window._fbReady) {
     window._fb.saveDoc('settings', 'spot', {
       value: spot,
-      updatedAt: new Date().toISOString(),
+      updatedAt: spotUpdatedAt,
       source: 'manual'
     });
   }
-  renderDashboard();
 }
 
 async function fetchSpot() {
@@ -2040,8 +2176,8 @@ async function fetchSpot() {
     const data = await r.json();
     if (data && data.ok && data.sell) {
       const val = Number(data.sell);
-      spot = val;
-      document.getElementById('spotInput').value = val;
+      const updatedAt = new Date().toISOString();
+      applySpotPrice(val, data.dateText || '', data.timeText || '', updatedAt);
       if (window._fbReady) {
         await window._fb.saveDoc('settings', 'spot', {
           value: val,
@@ -2050,11 +2186,11 @@ async function fetchSpot() {
           dateText: data.dateText || '',
           timeText: data.timeText || '',
           source: data.source || GOLD_PRICE_API_URL,
-          updatedAt: new Date().toISOString()
+          updatedAt
         });
       }
-      status.textContent = '✓ อัปเดต ' + (data.dateText || '') + ' ' + (data.timeText || '');
-      renderDashboard(); btn.textContent='↻'; return;
+      status.textContent = '✓ สมาคมฯ ' + (data.dateText || '') + ' ' + (data.timeText || '');
+      btn.textContent='↻'; return true;
     }
     throw new Error('gold api fail');
   } catch(e) {
@@ -2063,6 +2199,7 @@ async function fetchSpot() {
     document.getElementById('spotInput').select();
   }
   btn.textContent = '↻';
+  return false;
 }
 
 // ============ PRICE CALC ============
@@ -2098,6 +2235,8 @@ function renderDashboard() {
 
   const totalStock = products.reduce((s,p) => s + getProductQty(p), 0);
   const totalValue = products.reduce((s,p) => s + getProductStockValue(p), 0);
+  const stockCostIssues = getStockCostIssues();
+  const stockCostWarnings = getStockCostWarnings();
   const activeInstallments = installmentContracts.filter(c => ['active','due','overdue'].includes(getInstallmentRuntimeStatus(c)));
   const installmentReceivable = activeInstallments.reduce((s,c)=>s+getInstallmentBalance(c),0);
 
@@ -2106,7 +2245,7 @@ function renderDashboard() {
     <div class="metric"><div class="metric-label">รายได้ (วันนี้)</div><div class="metric-value">${todayRevenue.toLocaleString()}</div><div class="metric-sub">${todaySales.length} รายการ</div></div>
     <div class="metric green"><div class="metric-label">กำไร (วันนี้)</div><div class="metric-value">${todayProfit.toLocaleString()}</div><div class="metric-sub">บาท</div></div>
     <div class="metric"><div class="metric-label">ชิ้นในสต็อก</div><div class="metric-value">${totalStock}</div><div class="metric-sub">ชิ้น</div></div>
-    <div class="metric"><div class="metric-label">มูลค่าสต็อก</div><div class="metric-value">${Math.round(totalValue).toLocaleString()}</div><div class="metric-sub">บาท</div></div>
+    <div class="metric"><div class="metric-label">มูลค่าสต็อก</div><div class="metric-value">${Math.round(totalValue).toLocaleString()}</div><div class="metric-sub">ต้นทุนจริง × คงเหลือ${stockCostIssues.length ? ` · ต้นทุนไม่ครบ ${stockCostIssues.length} ล็อต` : ''}${stockCostWarnings.length ? ` · ควรตรวจ ${stockCostWarnings.length} รายการ` : (!stockCostIssues.length ? ' · ตรวจครบ' : '')}</div></div>
     <div class="metric gold"><div class="metric-label">ยอดผ่อนค้างรับ</div><div class="metric-value">${Math.round(installmentReceivable/1000).toLocaleString()}K</div><div class="metric-sub">${activeInstallments.length} สัญญา</div></div>
   `;
 
@@ -2252,25 +2391,69 @@ function copyReminderMsg() {
 // ============ STOCK TABLE ============
 function getProductQty(p) { return (p.lots || []).reduce((a,l)=>a+(l.qty||0),0); }
 function getLotLaborCost(p, lot) {
-  const laborCost = parseFloat(lot?.laborCost) || parseFloat(p?.laborCost) || parseFloat(p?.fee) || 0;
-  return Number.isFinite(laborCost) ? laborCost : 0;
+  const laborCost = parseFloat(lot?.laborCost);
+  if (Number.isFinite(laborCost) && laborCost >= 0) return laborCost;
+  const productLaborCost = parseFloat(p?.laborCost);
+  if (Number.isFinite(productLaborCost) && productLaborCost >= 0) return productLaborCost;
+  const hasNewCostSchema = ['goldCost','laborCost','totalCost'].some(key => Object.prototype.hasOwnProperty.call(p || {}, key)) ||
+    (p?.lots || []).some(item => ['goldCost','laborCost','totalCost'].some(key => Object.prototype.hasOwnProperty.call(item || {}, key)));
+  // ข้อมูลรุ่นเก่าใช้ p.fee เป็นค่ากำเหน็จต้นทุน; รุ่นใหม่แยกค่าขายออกแล้ว
+  if (!hasNewCostSchema) {
+    const legacyLabor = parseFloat(p?.fee);
+    if (Number.isFinite(legacyLabor) && legacyLabor > 0) return legacyLabor;
+  }
+  return 0;
 }
 function getLotGoldCost(p, lot) {
   const goldBaseCost = parseFloat(lot?.goldCost);
   if (Number.isFinite(goldBaseCost) && goldBaseCost > 0) return goldBaseCost;
 
+  // ข้อมูลรุ่นเดิมเก็บต้นทุนจริงต่อชิ้นไว้ใน lot.cost
   const savedCost = parseFloat(lot?.cost);
   if (Number.isFinite(savedCost) && savedCost > 0) return savedCost;
 
-  return goldCost(p?.weight || 4);
+  const productGoldCost = parseFloat(p?.goldCost);
+  return Number.isFinite(productGoldCost) && productGoldCost > 0 ? productGoldCost : 0;
 }
 function getLotUnitCost(p, lot) {
-  const totalCost = parseFloat(lot?.totalCost) || parseFloat(p?.totalCost);
-  if (Number.isFinite(totalCost) && totalCost > 0) return totalCost;
+  const lotTotalCost = parseFloat(lot?.totalCost);
+  if (Number.isFinite(lotTotalCost) && lotTotalCost > 0) return lotTotalCost;
+
+  const lotGoldCost = parseFloat(lot?.goldCost);
+  if (Number.isFinite(lotGoldCost) && lotGoldCost > 0) {
+    return lotGoldCost + getLotLaborCost(p, lot);
+  }
+
+  const legacyCost = parseFloat(lot?.cost);
+  if (Number.isFinite(legacyCost) && legacyCost > 0) return legacyCost + getLotLaborCost(p, lot);
+
+  const productTotalCost = parseFloat(p?.totalCost);
+  if (Number.isFinite(productTotalCost) && productTotalCost > 0) return productTotalCost;
+
   return getLotGoldCost(p, lot) + getLotLaborCost(p, lot);
 }
 function getProductStockValue(p) {
-  return (p.lots || []).reduce((sum, lot) => sum + getLotUnitCost(p, lot) * (lot.qty || 0), 0);
+  return (p.lots || []).reduce((sum, lot) => {
+    const qty = Math.max(0, Number(lot.qty) || 0);
+    return sum + getLotUnitCost(p, lot) * qty;
+  }, 0);
+}
+function getStockCostIssues() {
+  return products.flatMap(p => (p.lots || [])
+    .filter(lot => Number(lot.qty || 0) > 0 && getLotUnitCost(p, lot) <= 0)
+    .map(lot => ({ code:p.code, name:p.name, qty:Number(lot.qty || 0) })));
+}
+function getProductCostWarning(p) {
+  const qty = getProductQty(p);
+  const actual = getAvgCost(p);
+  const reference = goldCost(p?.weight || 0);
+  if (!qty || !actual || !reference) return actual <= 0 ? 'ไม่มีต้นทุนจริง' : '';
+  if (actual > reference * 3) return 'ต้นทุนสูงผิดสัดส่วน';
+  if (actual < reference * 0.2) return 'ต้นทุนต่ำผิดสัดส่วน';
+  return '';
+}
+function getStockCostWarnings() {
+  return products.map(p => ({ product:p, warning:getProductCostWarning(p) })).filter(x => x.warning);
 }
 function getAvgCost(p) {
   const lots = Array.isArray(p.lots) ? p.lots : [];
@@ -2296,6 +2479,17 @@ function renderStock() {
     return matchSearch && matchFilter;
   });
 
+  const warnings = getStockCostWarnings();
+  const warningEl = document.getElementById('stockCostAlert');
+  if (warningEl) {
+    warningEl.style.display = warnings.length ? 'block' : 'none';
+    warningEl.style.background = 'var(--red-bg)';
+    warningEl.style.color = 'var(--red)';
+    warningEl.innerHTML = warnings.length
+      ? `<strong>พบ ${warnings.length} รายการที่ควรตรวจต้นทุน:</strong> ${warnings.slice(0,8).map(x=>x.product.code).join(', ')}${warnings.length>8?' ...':''}<br><span style="font-size:12px;">ระบบยังรวมตามต้นทุนที่บันทึกไว้ กรุณากด “แก้ไข” เพื่อตรวจต้นทุนจริงก่อนใช้ยอดทางบัญชี</span>`
+      : '';
+  }
+
   const tbody = document.getElementById('stockTbody');
   if (!filtered.length) {
     tbody.innerHTML = `<tr><td colspan="10"><div class="empty"><div class="empty-icon">▦</div><div class="empty-text">ไม่มีสินค้าในสต็อก</div></div></td></tr>`;
@@ -2314,7 +2508,7 @@ function renderStock() {
       <td><span class="mono">${p.code}</span></td>
       <td>
         <div style="font-weight:500;">${p.name}</div>
-        <div class="fifo-info">${p.lots.length} ล็อต · ${WEIGHT_LABELS[p.weight]||p.weight}</div>
+        <div class="fifo-info">${p.lots.length} ล็อต · ${WEIGHT_LABELS[p.weight]||p.weight}${getProductCostWarning(p)?` · <span style="color:var(--red);font-weight:600;">⚠ ${getProductCostWarning(p)}</span>`:''}</div>
       </td>
       <td><span style="font-size:12px;color:var(--text3);">${p.tray||'—'}</span></td>
       <td>${WEIGHT_LABELS[p.weight]||p.weight}</td>
@@ -2372,6 +2566,9 @@ function openAddModal() {
   document.getElementById('addOriginalCode').value = '';
   document.getElementById('addSaveBtn').textContent = 'บันทึกเข้าสต็อก';
   document.getElementById('addQty').disabled = false;
+  document.getElementById('addType').value = 'SC';
+  document.getElementById('addWeight').value = 'g0.3';
+  document.getElementById('addTray').value = '';
   document.getElementById('addCode').value = '';
   document.getElementById('addName').value = '';
   document.getElementById('addCost').value = Math.round(goldCost('g0.3'));
@@ -2379,9 +2576,17 @@ function openAddModal() {
   document.getElementById('addTotalCost').value = Math.round(goldCost('g0.3'));
   document.getElementById('addFee').value = 0;
   document.getElementById('addQty').value = 1;
+  document.getElementById('addSource').value = 'ซัพพลายเออร์';
   calcAddPrice();
   autoCode();
   document.getElementById('addModal').classList.add('open');
+}
+
+function suggestGoldCostForWeight() {
+  const raw = document.getElementById('addWeight').value;
+  const weight = isNaN(raw) ? raw : parseFloat(raw);
+  document.getElementById('addCost').value = Math.round(goldCost(weight));
+  calcAddPrice();
 }
 
 function editProduct(code) {
@@ -2458,7 +2663,10 @@ function addProduct() {
   const fee = parseFloat(document.getElementById('addFee').value)||0;
   const qty = parseInt(document.getElementById('addQty').value);
   const source = document.getElementById('addSource').value;
-  if (!code||!name||!goldBaseCost) { alert('กรุณากรอกข้อมูลให้ครบค่ะ'); return; }
+  if (!code || !name || !Number.isFinite(goldBaseCost) || goldBaseCost <= 0 || laborCost < 0 || fee < 0 || Number.isNaN(qty) || (!editCode && qty < 1)) {
+    alert('กรุณากรอกรหัส ชื่อ ต้นทุน และจำนวนให้ถูกต้อง');
+    return;
+  }
 
   if (editCode) {
     const p = products.find(x => x.code === originalCode);
@@ -2498,6 +2706,7 @@ function addProduct() {
 
 // ============ BUY MODAL ============
 function openBuyModal() {
+  if (!requirePerm('buy', 'ไม่มีสิทธิ์รับซื้อทอง')) return;
   calcBuyPrice();
   document.getElementById('buyModal').classList.add('open');
 }
@@ -2835,14 +3044,20 @@ function addLot(code) {
 }
 
 function isoToDateInput(value) {
-  if (!value) return new Date().toISOString().slice(0,10);
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0,10);
-  return d.toISOString().slice(0,10);
+  const d = value ? new Date(value) : new Date();
+  const safe = Number.isNaN(d.getTime()) ? new Date() : d;
+  const y = safe.getFullYear();
+  const m = String(safe.getMonth() + 1).padStart(2, '0');
+  const day = String(safe.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function dateInputToIso(value) {
-  return value ? new Date(value + 'T00:00:00').toISOString() : new Date().toISOString();
+  if (!value) return new Date().toISOString();
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return new Date().toISOString();
+  // เก็บเวลาเที่ยงวันตามเวลาไทย ป้องกันวันที่เลื่อนเมื่อแปลง UTC/เปิดแก้ไขซ้ำ
+  return new Date(y, m - 1, d, 12, 0, 0).toISOString();
 }
 
 function openLotModal(code, index='') {
@@ -2860,7 +3075,15 @@ function openLotModal(code, index='') {
   document.getElementById('lotQty').value = lot ? lot.qty : 1;
   document.getElementById('lotDate').value = isoToDateInput(lot?.date);
   document.getElementById('lotSource').value = lot ? (lot.source || '') : 'เพิ่มล็อต';
+  calcLotCost();
   document.getElementById('lotModal').classList.add('open');
+}
+
+function calcLotCost() {
+  const goldBaseCost = Math.max(0, parseFloat(document.getElementById('lotCost')?.value) || 0);
+  const laborCost = Math.max(0, parseFloat(document.getElementById('lotLaborCost')?.value) || 0);
+  const totalEl = document.getElementById('lotTotalCost');
+  if (totalEl) totalEl.value = Math.round(goldBaseCost + laborCost);
 }
 
 function showLots(code) {
@@ -2892,7 +3115,7 @@ function saveLot() {
   const qty = parseInt(document.getElementById('lotQty').value);
   const date = dateInputToIso(document.getElementById('lotDate').value);
   const source = document.getElementById('lotSource').value.trim() || 'เพิ่มล็อต';
-  if (!goldBaseCost || qty < 0 || Number.isNaN(qty)) { alert('กรุณากรอกต้นทุนและจำนวนให้ถูกต้อง'); return; }
+  if (!Number.isFinite(goldBaseCost) || goldBaseCost <= 0 || laborCost < 0 || qty < 0 || Number.isNaN(qty)) { alert('กรุณากรอกต้นทุนและจำนวนให้ถูกต้อง'); return; }
   if (!Array.isArray(p.lots)) p.lots = [];
   if (indexRaw === '') {
     p.lots.push({ cost, totalCost:cost, goldCost:goldBaseCost, laborCost, qty, date, source });
@@ -2909,7 +3132,6 @@ function saveLot() {
 }
 
 // ============ MODAL HELPERS ============
-function openBuyModal() { if (!requirePerm('buy', 'ไม่มีสิทธิ์รับซื้อทอง')) return; calcBuyPrice(); document.getElementById('buyModal').classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); }));
 
@@ -3195,8 +3417,9 @@ function exportReport() {
 // ============ REPORT INIT DATES ============
 function initReportDates() {
   const now = new Date();
-  document.getElementById('reportDate').value = now.toISOString().slice(0,10);
-  document.getElementById('reportMonth').value = now.toISOString().slice(0,7);
+  const localDate = isoToDateInput(now);
+  document.getElementById('reportDate').value = localDate;
+  document.getElementById('reportMonth').value = localDate.slice(0,7);
 }
 
 // ============ SEED DATA ============
@@ -3360,7 +3583,8 @@ function addCustomerTransaction(name, type, item, amount) {
 
 function renderCRM() {
   const q = (document.getElementById('crmSearch').value||'').toLowerCase();
-  const filtered = customers.filter(c => !q || c.name.toLowerCase().includes(q));
+  const filtered = customers.filter(c => !q || [c.name,c.phone,c.id]
+    .filter(Boolean).join(' ').toLowerCase().includes(q));
   const grid = document.getElementById('crmGrid');
   if (!filtered.length) { grid.innerHTML='<div class="empty"><div class="empty-text">ยังไม่มีข้อมูลลูกค้า — เริ่มบันทึกชื่อลูกค้าเมื่อขาย</div></div>'; return; }
   grid.innerHTML = filtered.map(c => {
@@ -3413,7 +3637,7 @@ function openCustomerVisitModal(name='', phone='') {
   if (!requirePerm('editCustomer', 'ไม่มีสิทธิ์บันทึกประวัติลูกค้า')) return;
   document.getElementById('visitCustomerName').value = name;
   document.getElementById('visitCustomerPhone').value = phone;
-  document.getElementById('visitDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('visitDate').value = isoToDateInput(new Date());
   document.getElementById('visitReason').value = 'สอบถามราคา';
   document.getElementById('visitNote').value = '';
   document.getElementById('customerVisitModal').classList.add('open');
@@ -3749,13 +3973,25 @@ async function awaitSafeSavePawn(docId, payload) {
 }
 
 // ============ SAVINGS ============
-function nextSavingsId() {
+function getMaxSavingsSequence() {
   const maxNo = (savingsAccounts || []).reduce((max, sv) => {
     const raw = String(sv.id || sv.accountNo || sv._docId || '');
     const m = raw.match(/SV-(\d+)/i);
     return m ? Math.max(max, parseInt(m[1], 10)) : max;
   }, 0);
+  return maxNo;
+}
+
+async function nextSavingsId() {
+  const maxNo = getMaxSavingsSequence();
   let next = maxNo + 1;
+  if (window._fbReady && window._fb.nextSequence) {
+    try {
+      next = await window._fb.nextSequence('savings', maxNo);
+    } catch (err) {
+      console.warn('ใช้เลขบัญชีสำรองในเครื่อง:', err);
+    }
+  }
   let id = 'SV-' + String(next).padStart(4,'0');
   while (savingsAccounts.some(sv => String(sv.id || sv.accountNo || sv._docId) === id)) {
     next++;
@@ -3796,14 +4032,17 @@ function editSavings(id) {
   document.getElementById('savingsModal').classList.add('open');
 }
 
-function confirmSavings() {
+async function confirmSavings() {
   if (!requirePerm('savings', 'ไม่มีสิทธิ์เปิดบัญชีออมทอง')) return;
+  const saveBtn = document.getElementById('savingsSaveBtn');
+  if (saveBtn.disabled) return;
   const editId = document.getElementById('savEditId').value;
   const customer = document.getElementById('savCustomer').value.trim();
   const phone = document.getElementById('savPhone').value.trim();
   const period = document.getElementById('savPeriod').value;
   const topupPct = parseFloat(document.getElementById('savTopupPct').value)||0;
   if (!customer) { alert('กรุณากรอกชื่อลูกค้า'); return; }
+  if (phone && normalizePhone(phone).length < 9) { alert('กรุณาตรวจสอบเบอร์โทรศัพท์'); return; }
   const customerRecord = upsertCustomerRecord(customer, phone);
   if (editId) {
     const sv = savingsAccounts.find(x=>x.id===editId);
@@ -3822,25 +4061,32 @@ function confirmSavings() {
     showToast('บันทึกการแก้ไขบัญชีออมทองแล้ว', 'success');
     return;
   }
-  const id = nextSavingsId();
-  savingsAccounts.push({
-    id,
-    customer,
-    customerName: customer,
-    phone,
-    customerPhone: phone,
-    customerId: customerRecord?.id || '',
-    period,
-    topupPct,       // % โบนัสที่ร้านให้
-    saved: 0,       // ยอดรวมทั้งหมด (deposit + bonus)
-    payments: [],   // { deposit, bonus, total, goldPrice, date }
-    status: 'active',
-    date: new Date().toISOString()
-  });
-  addCustomerTransaction(customer, 'savings', 'เปิดบัญชีออมทอง', 0);
-  save(); closeModal('savingsModal'); renderSavings();
-  // แสดงสรุปการเปิดบัญชีทันที
-  showSavingsSummary(id, 'open');
+  saveBtn.disabled = true;
+  const oldText = saveBtn.textContent;
+  saveBtn.textContent = 'กำลังบันทึก...';
+  try {
+    const id = await nextSavingsId();
+    savingsAccounts.push({
+      id,
+      customer,
+      customerName: customer,
+      phone: normalizePhone(phone),
+      customerPhone: normalizePhone(phone),
+      customerId: customerRecord?.id || '',
+      period,
+      topupPct,
+      saved: 0,
+      payments: [],
+      status: 'active',
+      date: new Date().toISOString()
+    });
+    addCustomerTransaction(customer, 'savings', 'เปิดบัญชีออมทอง', 0);
+    save(); closeModal('savingsModal'); renderSavings();
+    showSavingsSummary(id, 'open');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = oldText;
+  }
 }
 
 function renderSavings() {
@@ -3938,7 +4184,10 @@ function confirmSavingsPayment() {
   const bonus = Math.round(deposit * topupPct / 100);
   const total = deposit + bonus;
   const goldWeight = goldPrice > 0 ? deposit / goldPrice : 0;
+  const oldPayment = editIndexRaw === '' ? null : sv.payments[Number(editIndexRaw)];
+  const paymentId = oldPayment?.id || `svp_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
   const payment = {
+    id: paymentId,
     deposit,
     bonus,
     total,
@@ -3952,6 +4201,8 @@ function confirmSavingsPayment() {
     addCustomerTransaction(sv.customer, 'savings', 'ออมทอง', total);
     transactions.push({
       type:'savings_deposit',
+      savingsId: sv.id,
+      savingsPaymentId: paymentId,
       productName:'ออมทอง-'+sv.id,
       total,
       amount: deposit,
@@ -3966,6 +4217,21 @@ function confirmSavingsPayment() {
     });
   } else {
     sv.payments[Number(editIndexRaw)] = payment;
+    const linkedTxn = transactions.find(t =>
+      t.savingsPaymentId === paymentId ||
+      (!t.savingsPaymentId && t.type === 'savings_deposit' && t.productName === 'ออมทอง-'+sv.id &&
+        String(t.date || '') === String(oldPayment?.date || '') && Number(t.total || 0) === Number(oldPayment?.total || 0))
+    );
+    if (linkedTxn) Object.assign(linkedTxn, {
+      savingsId: sv.id,
+      savingsPaymentId: paymentId,
+      total,
+      amount: deposit,
+      goldPrice,
+      goldWeight,
+      date: paymentDate,
+      updatedAt: new Date().toISOString()
+    });
   }
   sv.saved = sv.payments.reduce((sum,p)=>sum+(p.total||0),0);
   save(); closeModal('savPayModal'); renderSavings();
@@ -3975,25 +4241,38 @@ function confirmSavingsPayment() {
 function showSavingsPayments(id) {
   const sv = savingsAccounts.find(x=>x.id===id);
   if (!sv) return;
-  const rows = (sv.payments || []).map((p, i) => {
+  const chronological = getSavingsPaymentsChronological(sv);
+  const rows = chronological.map(({payment:p, periodNo}) => {
     const d = new Date(p.date || Date.now()).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    return `${i+1}. ${d} · ฝาก ${(p.deposit||0).toLocaleString()} + โบนัส ${(p.bonus||0).toLocaleString()} = ${(p.total||0).toLocaleString()}`;
+    return `${periodNo}. ${d} · ฝาก ${(p.deposit||0).toLocaleString()} + โบนัส ${(p.bonus||0).toLocaleString()} = ${(p.total||0).toLocaleString()}`;
   }).join('\n');
   const choice = prompt(`งวดออมทอง ${sv.id} - ${sv.customer}\n\n${rows || 'ยังไม่มีงวดออม'}\n\nพิมพ์เลขงวดเพื่อแก้ไข หรือพิมพ์ d ตามด้วยเลขงวดเพื่อลบ เช่น d2`);
   if (!choice) return;
   const value = choice.trim().toLowerCase();
   if (value.startsWith('d')) {
-    const idx = Number(value.slice(1)) - 1;
-    if (!sv.payments[idx]) { alert('ไม่พบงวดที่เลือก'); return; }
-    if (!confirm(`ลบงวดที่ ${idx+1}?`)) return;
+    const selected = chronological[Number(value.slice(1)) - 1];
+    const idx = selected?.originalIndex;
+    if (!Number.isInteger(idx) || !sv.payments[idx]) { alert('ไม่พบงวดที่เลือก'); return; }
+    if (!confirm(`ลบงวดที่ ${selected.periodNo}?`)) return;
+    const removed = sv.payments[idx];
     sv.payments.splice(idx, 1);
+    const removeTxn = transactions.find(t =>
+      t.savingsPaymentId === removed?.id ||
+      (!t.savingsPaymentId && t.type === 'savings_deposit' && t.productName === 'ออมทอง-'+sv.id &&
+        String(t.date || '') === String(removed?.date || '') && Number(t.total || 0) === Number(removed?.total || 0))
+    );
+    if (removeTxn) {
+      const docId = removeTxn._docId || removeTxn.id || removeTxn.txnNo;
+      transactions = transactions.filter(t => t !== removeTxn);
+      if (window._fbReady && docId) window._fb.deleteDoc('transactions', docId);
+    }
     sv.saved = sv.payments.reduce((sum,p)=>sum+(p.total||0),0);
     save(); renderSavings(); showToast('ลบงวดออมทองแล้ว', 'info');
     return;
   }
-  const idx = Number(value) - 1;
-  if (!sv.payments[idx]) { alert('ไม่พบงวดที่เลือก'); return; }
-  editSavingsPayment(id, idx);
+  const selected = chronological[Number(value) - 1];
+  if (!selected || !sv.payments[selected.originalIndex]) { alert('ไม่พบงวดที่เลือก'); return; }
+  editSavingsPayment(id, selected.originalIndex);
 }
 
 function deleteSavings(id) {
@@ -4035,7 +4314,13 @@ function addPeriod(dateValue, periodType, count=1) {
   const d = new Date(dateValue);
   if (periodType === 'daily') d.setDate(d.getDate() + count);
   else if (periodType === 'weekly') d.setDate(d.getDate() + (7 * count));
-  else d.setMonth(d.getMonth() + count);
+  else {
+    const originalDay = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + count);
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(originalDay, lastDay));
+  }
   return d;
 }
 
@@ -4076,7 +4361,7 @@ function getInstallmentRuntimeStatus(c) {
 }
 
 function resetInstallmentModal() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = isoToDateInput(new Date());
   document.getElementById('instEditId').value = '';
   document.getElementById('installmentModalTitle').textContent = 'ทำสัญญาผ่อนทอง';
   document.getElementById('installmentSaveBtn').textContent = 'บันทึกสัญญา';
@@ -4110,7 +4395,7 @@ function calcInstallment(manualFinal=false, manualAmount=false) {
   const periodType = document.getElementById('instPeriodType').value || 'monthly';
   let periods = parseInt(document.getElementById('instPeriods').value) || 1;
   let amountPerPeriod = parseFloat(document.getElementById('instAmountPerPeriod').value) || 0;
-  const startDateValue = document.getElementById('instStartDate').value || new Date().toISOString().slice(0,10);
+  const startDateValue = document.getElementById('instStartDate').value || isoToDateInput(new Date());
 
   if (manualFinal) {
     profitAdd = Math.max(0, finalPrice - goldPrice);
@@ -4129,11 +4414,11 @@ function calcInstallment(manualFinal=false, manualAmount=false) {
     document.getElementById('instAmountPerPeriod').value = Math.round(amountPerPeriod);
   }
 
-  const start = new Date(startDateValue + 'T00:00:00');
+  const start = new Date(dateInputToIso(startDateValue));
   const firstDue = addPeriod(start, periodType, 1);
   const end = addPeriod(start, periodType, periods);
-  document.getElementById('instFirstDueDate').value = firstDue.toISOString().slice(0,10);
-  document.getElementById('instEndDate').value = end.toISOString().slice(0,10);
+  document.getElementById('instFirstDueDate').value = isoToDateInput(firstDue);
+  document.getElementById('instEndDate').value = isoToDateInput(end);
   document.getElementById('installmentPreview').innerHTML = `
     <div class="row"><span>ราคาทองขายออก</span><span>${Math.round(goldPrice).toLocaleString()} บาท</span></div>
     <div class="row"><span>กำไร / ค่ากำเหน็จ</span><span style="color:var(--green);">+${Math.round(profitAdd).toLocaleString()} บาท</span></div>
@@ -4636,7 +4921,6 @@ function closeSavings(id) {
 
 // ============ INIT ============
 loadLocalCache();
-seedIfEmpty();
 checkSession();
 renderDashboard();
 initReportDates();
