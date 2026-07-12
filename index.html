@@ -2447,7 +2447,8 @@ function getProductCostWarning(p) {
   const qty = getProductQty(p);
   const actual = getAvgCost(p);
   const reference = goldCost(p?.weight || 0);
-  if (!qty || !actual || !reference) return actual <= 0 ? 'ไม่มีต้นทุนจริง' : '';
+  if (!qty) return '';
+  if (!actual || !reference) return actual <= 0 ? 'ไม่มีต้นทุนจริง' : '';
   if (actual > reference * 3) return 'ต้นทุนสูงผิดสัดส่วน';
   if (actual < reference * 0.2) return 'ต้นทุนต่ำผิดสัดส่วน';
   return '';
