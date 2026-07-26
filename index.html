@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<!-- build: stability-regression-2026-07-13 -->
+<!-- build: installment-calculator-schedule-2026-07-26 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบสต็อกทอง — ห้างทองร่ำรวยดี</title>
@@ -246,12 +246,106 @@
   .ops-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
   .ops-meta { font-size:12px; color:var(--text3); line-height:1.45; }
 
+  /* Installment calculator */
+  .inst-calc-wrap { max-width:1120px; }
+  .inst-rate-card {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto auto;
+    align-items:center;
+    gap:20px;
+    background:var(--surface);
+    border:1px solid var(--border2);
+    border-radius:8px;
+    padding:18px 20px;
+    margin-bottom:14px;
+    box-shadow:0 8px 24px rgba(35,28,16,0.04);
+  }
+  .inst-rate-label { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:700; color:var(--text); }
+  .inst-rate-dot { width:11px; height:11px; border-radius:50%; background:#139A3A; box-shadow:0 0 0 4px rgba(19,154,58,0.10); flex:0 0 auto; }
+  .inst-rate-meta { font-size:12px; color:var(--text3); margin:2px 0 0 21px; }
+  .inst-rate-value { white-space:nowrap; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:27px; font-weight:600; color:var(--text); }
+  .inst-rate-value small { font-family:'Sarabun',sans-serif; font-size:12px; font-weight:500; color:var(--text2); }
+  .inst-rate-refresh { min-height:40px; background:var(--surface); color:#7D1B1B; border:1px solid rgba(125,27,27,0.42); }
+  .inst-rate-refresh:hover { background:#FFF6F4; }
+  .inst-calc-grid { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(320px,0.9fr); gap:14px; align-items:stretch; }
+  .inst-calc-panel, .inst-summary-panel { background:var(--surface); border:1px solid var(--border2); border-radius:8px; overflow:hidden; box-shadow:0 8px 24px rgba(35,28,16,0.04); }
+  .inst-calc-panel { padding:20px; }
+  .inst-calc-section + .inst-calc-section { border-top:1px solid var(--border); margin-top:18px; padding-top:18px; }
+  .inst-calc-section-title { font-size:15px; font-weight:700; color:#621717; margin-bottom:12px; }
+  .inst-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .inst-form-group { display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .inst-form-group.full { grid-column:1/-1; }
+  .inst-form-group label { font-size:12px; color:var(--text2); }
+  .inst-input-suffix { position:relative; }
+  .inst-input-suffix input { width:100%; padding-right:52px; }
+  .inst-input-suffix span { position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:12px; pointer-events:none; }
+  .inst-helper { font-size:11px; color:var(--text3); margin-top:1px; }
+  .inst-segments { display:grid; gap:8px; }
+  .inst-segments.plan { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .inst-segments.months { grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .inst-segment {
+    min-height:42px;
+    border:1px solid var(--border2);
+    border-radius:7px;
+    background:var(--surface);
+    color:var(--text2);
+    font-family:'Sarabun',sans-serif;
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    transition:background 0.15s,border-color 0.15s,color 0.15s;
+  }
+  .inst-segment:hover { border-color:var(--gold); color:var(--text); }
+  .inst-segment.active { background:#F4C754; border-color:#A8730C; color:#432604; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.35); }
+  .inst-calc-action { width:100%; justify-content:center; min-height:48px; margin-top:18px; background:linear-gradient(180deg,#D5A11B,#B98008); color:#fff; font-size:16px; border:1px solid #A86F05; }
+  .inst-calc-action:hover { background:linear-gradient(180deg,#C39112,#9D6704); }
+  .inst-summary-head { display:flex; align-items:center; gap:12px; padding:22px 20px; background:linear-gradient(135deg,#C48B10,#F2CE65 58%,#D9A52C); border-bottom:1px solid rgba(91,54,4,0.20); }
+  .inst-summary-icon { width:44px; height:44px; display:grid; place-items:center; border-radius:50%; background:rgba(255,255,255,0.32); color:#5B3404; font-size:23px; }
+  .inst-summary-head h3 { font-size:22px; color:#432006; }
+  .inst-summary-body { padding:20px; }
+  .inst-summary-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:8px 0; font-size:14px; color:var(--text2); }
+  .inst-summary-row strong { color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:16px; white-space:nowrap; }
+  .inst-summary-row.total { border-top:1px solid rgba(185,138,20,0.50); margin-top:8px; padding-top:16px; }
+  .inst-summary-row.total span { font-size:17px; font-weight:700; color:var(--text); }
+  .inst-summary-row.total strong { font-size:25px; color:#6E1717; }
+  .inst-payment-box { border:1px solid rgba(185,138,20,0.55); background:#FFFBF0; border-radius:8px; text-align:center; padding:16px 12px; margin:14px 0; }
+  .inst-payment-box span { display:block; font-size:13px; color:var(--text2); }
+  .inst-payment-box strong { display:block; font-family:'IBM Plex Mono',monospace; font-size:32px; color:#A06A00; line-height:1.3; margin-top:3px; }
+  .inst-payment-box small { font-family:'Sarabun',sans-serif; font-size:13px; color:var(--text2); margin-left:5px; }
+  .inst-plan-summary { font-size:13px; color:var(--text2); padding:4px 0 14px; }
+  .inst-start-btn { width:100%; justify-content:center; min-height:44px; background:var(--surface); color:#7D1B1B; border:1px solid #7D1B1B; font-size:15px; }
+  .inst-start-btn:hover { background:#FFF3F1; }
+  .inst-schedule-card { background:var(--surface); border:1px solid var(--border2); border-radius:8px; margin-top:14px; padding:20px; box-shadow:0 8px 24px rgba(35,28,16,0.04); }
+  .inst-schedule-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; }
+  .inst-schedule-title { font-size:17px; font-weight:700; color:#621717; }
+  .inst-schedule-meta { font-size:12px; color:var(--text3); margin-top:2px; }
+  .inst-schedule-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .inst-schedule-table { min-width:620px; }
+  .inst-schedule-table th:nth-child(n+3), .inst-schedule-table td:nth-child(n+3) { text-align:right; }
+  .inst-schedule-table tfoot td { background:#FFFBF0; font-weight:700; border-top:1px solid rgba(185,138,20,0.35); }
+  .inst-schedule-note { margin-top:10px; font-size:11px; color:var(--text3); }
+  .receipt-schedule { width:100%; border-collapse:collapse; margin-top:8px; font-size:10px; }
+  .receipt-schedule th, .receipt-schedule td { border:1px solid var(--border2); padding:3px 4px; text-align:left; }
+  .receipt-schedule th:nth-child(n+3), .receipt-schedule td:nth-child(n+3) { text-align:right; }
+  .receipt-schedule th { background:var(--surface2); }
+  .receipt-schedule .paid-mark { display:block; color:var(--green); font-size:8px; }
+
   @media print {
     .login-overlay, .sidebar, .page-header button, .tabs, .alert, .btn { display:none !important; }
     .app { grid-template-columns: 1fr; }
     #barcodeList { grid-template-columns: repeat(4,1fr) !important; gap:8px !important; }
     .bc-card { border:1px solid #ccc; page-break-inside:avoid; }
     .receipt { width:100%; }
+    body.print-installment-schedule .page { display:none !important; }
+    body.print-installment-schedule #page-installment-calculator { display:block !important; padding:0; max-width:none; }
+    body.print-installment-schedule #page-installment-calculator .inst-rate-card,
+    body.print-installment-schedule #page-installment-calculator .inst-calc-grid,
+    body.print-installment-schedule #page-installment-calculator .page-header { display:none !important; }
+    body.print-installment-schedule .inst-calc-wrap { max-width:none; }
+    body.print-installment-schedule .inst-schedule-card { margin:0; padding:0; border:none; box-shadow:none; }
+    body.print-installment-schedule .inst-schedule-actions { display:none; }
+    body.print-installment-schedule .inst-schedule-table { min-width:0; }
+    body.print-installment-schedule .inst-schedule-table tr { page-break-inside:avoid; }
   }
 
   @media (max-width: 760px) {
@@ -287,11 +381,27 @@
     .tx-row { align-items:flex-start; flex-wrap:wrap; }
     .tx-meta { min-width:180px; }
     .crm-grid { grid-template-columns:1fr; }
+    .inst-rate-card { grid-template-columns:1fr auto; gap:12px; }
+    .inst-rate-refresh { grid-column:1/-1; justify-self:stretch; justify-content:center; }
+    .inst-calc-grid { grid-template-columns:1fr; }
+    .inst-calc-panel { padding:16px; }
+    .inst-summary-head { padding:18px 16px; }
+    .inst-summary-body { padding:16px; }
+    .inst-schedule-card { padding:16px; }
+    .inst-schedule-head { flex-direction:column; }
+    .inst-schedule-actions { width:100%; }
+    .inst-schedule-actions .btn { flex:1; justify-content:center; }
   }
 
   @media (max-width: 390px) {
     .metric-grid { grid-template-columns:1fr; }
     .sidebar-spot { grid-template-columns:1fr 118px; }
+    .inst-rate-card { grid-template-columns:1fr; }
+    .inst-rate-value { text-align:left; margin-left:21px; font-size:24px; }
+    .inst-form-grid { grid-template-columns:1fr; }
+    .inst-form-group.full { grid-column:auto; }
+    .inst-segments.plan { grid-template-columns:1fr; }
+    .inst-segments.months { grid-template-columns:repeat(3,minmax(0,1fr)); }
   }
 </style>
 </head>
@@ -408,6 +518,9 @@
       </div>
       <div class="nav-item" onclick="showPage('installment')">
         <span class="nav-icon">▣</span> ผ่อนทอง
+      </div>
+      <div class="nav-item" onclick="showPage('installment-calculator')">
+        <span class="nav-icon">▧</span> คำนวณยอดผ่อนทอง
       </div>
       <div class="nav-item" onclick="showPage('crm')">
         <span class="nav-icon">◑</span> CRM ลูกค้า
@@ -740,6 +853,139 @@
           <thead><tr><th>เลขสัญญา</th><th>ลูกค้า / สินค้า</th><th>ราคาสัญญา</th><th>แผนผ่อน</th><th>จ่ายแล้ว</th><th>คงเหลือ</th><th>งวดถัดไป</th><th>สถานะ</th><th></th></tr></thead>
           <tbody id="installmentTbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Installment Calculator -->
+    <div class="page" id="page-installment-calculator">
+      <div class="inst-calc-wrap">
+        <div class="page-header">
+          <div>
+            <div class="page-title">คำนวณยอดผ่อนทอง</div>
+            <div class="page-sub">คำนวณค่างวดจากราคาทองปัจจุบันก่อนเริ่มทำสัญญา</div>
+          </div>
+        </div>
+
+        <div class="inst-rate-card">
+          <div>
+            <div class="inst-rate-label"><span class="inst-rate-dot"></span>ราคาทองวันนี้</div>
+            <div class="inst-rate-meta" id="instCalcRateMeta">กำลังตรวจสอบราคาล่าสุด...</div>
+          </div>
+          <div class="inst-rate-value"><span id="instCalcSpot">0</span> <small>บาท / บาททอง</small></div>
+          <button type="button" class="btn inst-rate-refresh" id="instCalcRefreshBtn" onclick="refreshInstallmentGoldRate()">↻ อัปเดตราคา</button>
+        </div>
+
+        <div class="inst-calc-grid">
+          <section class="inst-calc-panel">
+            <div class="inst-calc-section">
+              <div class="inst-calc-section-title">รายละเอียดทอง</div>
+              <div class="inst-form-grid">
+                <div class="inst-form-group">
+                  <label for="instCalcGoldType">ประเภททอง</label>
+                  <select id="instCalcGoldType" onchange="calculateInstallmentQuote()">
+                    <option value="bar965" data-factor="1">ทองคำแท่ง 96.5%</option>
+                    <option value="jewelry965" data-factor="1">ทองรูปพรรณ 96.5%</option>
+                    <option value="bar9999" data-factor="1.036">ทองคำแท่ง 99.99%</option>
+                  </select>
+                </div>
+                <div class="inst-form-group">
+                  <label for="instCalcWeight">น้ำหนักทอง</label>
+                  <select id="instCalcWeight" onchange="calculateInstallmentQuote()">
+                    <option value="0.25">1 สลึง</option>
+                    <option value="0.5">2 สลึง</option>
+                    <option value="0.75">3 สลึง</option>
+                    <option value="1" selected>1 บาท</option>
+                    <option value="2">2 บาท</option>
+                    <option value="3">3 บาท</option>
+                    <option value="5">5 บาท</option>
+                  </select>
+                </div>
+                <div class="inst-form-group full">
+                  <label for="instCalcProfit">บวกกำไร / ค่ากำเหน็จ</label>
+                  <div class="inst-input-suffix">
+                    <input type="number" id="instCalcProfit" min="0" step="100" value="4800" oninput="calculateInstallmentQuote()">
+                    <span>บาท</span>
+                  </div>
+                  <div class="inst-helper">ระบบคำนวณยอดขายรวมและค่างวดให้อัตโนมัติ</div>
+                </div>
+                <div class="inst-form-group full">
+                  <label for="instCalcStartDate">วันเริ่มผ่อน</label>
+                  <input type="date" id="instCalcStartDate" onchange="calculateInstallmentQuote()">
+                  <div class="inst-helper">งวดแรกจะครบกำหนดในรอบถัดไปตามรูปแบบการผ่อน</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="inst-calc-section">
+              <div class="inst-calc-section-title">รูปแบบการผ่อน</div>
+              <input type="hidden" id="instCalcPlan" value="monthly">
+              <div class="inst-segments plan">
+                <button type="button" class="inst-segment" data-plan="daily" onclick="selectInstallmentCalcPlan('daily',this)">▦ รายวัน</button>
+                <button type="button" class="inst-segment" data-plan="weekly" onclick="selectInstallmentCalcPlan('weekly',this)">▦ รายสัปดาห์</button>
+                <button type="button" class="inst-segment active" data-plan="monthly" onclick="selectInstallmentCalcPlan('monthly',this)">▦ รายเดือน</button>
+              </div>
+            </div>
+
+            <div class="inst-calc-section">
+              <div class="inst-calc-section-title">ระยะเวลาผ่อน</div>
+              <input type="hidden" id="instCalcMonths" value="3">
+              <div class="inst-segments months">
+                <button type="button" class="inst-segment" onclick="selectInstallmentCalcMonths(1,this)">1 เดือน</button>
+                <button type="button" class="inst-segment" onclick="selectInstallmentCalcMonths(2,this)">2 เดือน</button>
+                <button type="button" class="inst-segment active" onclick="selectInstallmentCalcMonths(3,this)">3 เดือน</button>
+                <button type="button" class="inst-segment" onclick="selectInstallmentCalcMonths(4,this)">4 เดือน</button>
+                <button type="button" class="inst-segment" onclick="selectInstallmentCalcMonths(5,this)">5 เดือน</button>
+                <button type="button" class="inst-segment" onclick="selectInstallmentCalcMonths(6,this)">6 เดือน</button>
+              </div>
+            </div>
+
+            <button type="button" class="btn inst-calc-action" onclick="calculateInstallmentQuote()">▦ คำนวณค่างวด</button>
+          </section>
+
+          <aside class="inst-summary-panel">
+            <div class="inst-summary-head">
+              <div class="inst-summary-icon">◆</div>
+              <h3>สรุปยอดผ่อน</h3>
+            </div>
+            <div class="inst-summary-body">
+              <div class="inst-summary-row"><span>ราคาทอง</span><strong><span id="instCalcGoldAmount">0</span> บาท</strong></div>
+              <div class="inst-summary-row"><span>กำไร / ค่ากำเหน็จ</span><strong><span id="instCalcProfitAmount">0</span> บาท</strong></div>
+              <div class="inst-summary-row total"><span>ยอดขายรวม</span><strong><span id="instCalcTotal">0</span> บาท</strong></div>
+              <div class="inst-summary-row"><span>จำนวนงวด</span><strong><span id="instCalcPeriods">0</span> งวด</strong></div>
+              <div class="inst-payment-box">
+                <span>ค่างวดต่อครั้ง</span>
+                <strong><span id="instCalcPerPeriod">0.00</span><small>บาท</small></strong>
+              </div>
+              <div class="inst-plan-summary" id="instCalcPlanText">ผ่อนรายเดือน เป็นเวลา 3 เดือน</div>
+              <button type="button" class="btn inst-start-btn" onclick="startInstallmentFromCalculator()">▧ เริ่มทำสัญญาผ่อน</button>
+            </div>
+          </aside>
+        </div>
+
+        <section class="inst-schedule-card" id="instScheduleCard">
+          <div class="inst-schedule-head">
+            <div>
+              <div class="inst-schedule-title">ตารางงวดผ่อนสำหรับลูกค้า</div>
+              <div class="inst-schedule-meta" id="instScheduleMeta">กำหนดชำระทั้งหมด 3 งวด</div>
+            </div>
+            <div class="inst-schedule-actions">
+              <button type="button" class="btn btn-ghost" onclick="printInstallmentSchedule()">▤ พิมพ์ / บันทึก PDF</button>
+              <button type="button" class="btn btn-primary" onclick="startInstallmentFromCalculator()">▧ เริ่มทำสัญญา</button>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="inst-schedule-table">
+              <thead>
+                <tr><th>งวดที่</th><th>วันครบกำหนด</th><th>ยอดชำระ</th><th>ยอดคงเหลือ</th></tr>
+              </thead>
+              <tbody id="instScheduleTbody"></tbody>
+              <tfoot>
+                <tr><td colspan="2">รวมยอดผ่อน</td><td id="instScheduleTotal">0 บาท</td><td>0 บาท</td></tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="inst-schedule-note">หมายเหตุ: ตารางนี้เป็นกำหนดชำระตามแผน ยอดงวดสุดท้ายจะปรับอัตโนมัติเพื่อให้ยอดรวมตรงกับราคาสุทธิ</div>
+        </section>
       </div>
     </div>
 
@@ -1841,6 +2087,7 @@ function showPage(id) {
   if (id==='pawn') renderPawn();
   if (id==='savings') renderSavings();
   if (id==='installment') renderInstallments();
+  if (id==='installment-calculator') renderInstallmentCalculator();
   if (id==='crm') renderCRM();
   if (id==='sell') { setTimeout(()=>document.getElementById('barcodeInput').focus(),100); }
   if (id==='settings') renderSettings();
@@ -2146,6 +2393,7 @@ function applySpotPrice(value, dateText='', timeText='', updatedAt='') {
   if (input) input.value = spot;
   if (status && (dateText || timeText)) status.textContent = `สมาคมฯ ${dateText} ${timeText}`.trim();
   renderDashboard();
+  renderInstallmentCalculator();
   return true;
 }
 
@@ -2200,6 +2448,169 @@ async function fetchSpot() {
   }
   btn.textContent = '↻';
   return false;
+}
+
+// ============ INSTALLMENT CALCULATOR ============
+function buildInstallmentSchedule({ total, downPayment=0, periods=1, periodType='monthly', startDate='', firstDueDate='' }) {
+  const count = Math.max(1, Math.floor(Number(periods) || 1));
+  const principal = Math.max(0, Math.round(Number(total || 0) - Number(downPayment || 0)));
+  const baseAmount = Math.floor(principal / count);
+  const extraBaht = principal - (baseAmount * count);
+  const start = new Date(dateInputToIso(startDate || isoToDateInput(new Date())));
+  const defaultFirstDue = addPeriod(start, periodType, 1);
+  const firstDue = firstDueDate ? new Date(firstDueDate) : defaultFirstDue;
+  const usesDefaultCycle = !firstDueDate || isoToDateInput(firstDue) === isoToDateInput(defaultFirstDue);
+  let balance = principal;
+  return Array.from({ length: count }, (_, index) => {
+    const amount = baseAmount + (index < extraBaht ? 1 : 0);
+    balance = Math.max(0, balance - amount);
+    return {
+      period: index + 1,
+      dueDate: usesDefaultCycle ? addPeriod(start, periodType, index + 1) : addPeriod(firstDue, periodType, index),
+      amount,
+      balance
+    };
+  });
+}
+
+function getInstallmentCalculatorQuote() {
+  const typeSelect = document.getElementById('instCalcGoldType');
+  const weightSelect = document.getElementById('instCalcWeight');
+  if (!typeSelect || !weightSelect) return null;
+  const selectedType = typeSelect.options[typeSelect.selectedIndex];
+  const selectedWeight = weightSelect.options[weightSelect.selectedIndex];
+  const purityFactor = Number(selectedType?.dataset.factor || 1);
+  const weight = Math.max(0, Number(weightSelect.value || 0));
+  const profit = Math.max(0, Number(document.getElementById('instCalcProfit')?.value || 0));
+  const plan = document.getElementById('instCalcPlan')?.value || 'monthly';
+  const months = Math.min(6, Math.max(1, Number(document.getElementById('instCalcMonths')?.value || 1)));
+  const startDate = document.getElementById('instCalcStartDate')?.value || isoToDateInput(new Date());
+  const goldAmount = Math.round(spot * weight * purityFactor);
+  const total = goldAmount + profit;
+  const periods = plan === 'daily' ? months * 30 : plan === 'weekly' ? months * 4 : months;
+  const perPeriod = periods > 0 ? total / periods : total;
+  return {
+    typeLabel: selectedType?.textContent || '',
+    weightLabel: selectedWeight?.textContent || '',
+    goldAmount,
+    profit,
+    total,
+    plan,
+    months,
+    periods,
+    perPeriod,
+    startDate
+  };
+}
+
+function renderInstallmentScheduleTable(quote) {
+  const tbody = document.getElementById('instScheduleTbody');
+  if (!tbody || !quote) return;
+  const schedule = buildInstallmentSchedule({
+    total: quote.total,
+    periods: quote.periods,
+    periodType: quote.plan,
+    startDate: quote.startDate
+  });
+  const money = value => Number(value || 0).toLocaleString('th-TH');
+  tbody.innerHTML = schedule.map(row => `
+    <tr>
+      <td><strong>งวดที่ ${row.period}</strong></td>
+      <td>${row.dueDate.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td class="num">${money(row.amount)} บาท</td>
+      <td class="num">${money(row.balance)} บาท</td>
+    </tr>
+  `).join('');
+  document.getElementById('instScheduleMeta').textContent =
+    `${quote.typeLabel} · ${quote.weightLabel} · ${installmentPeriodLabel(quote.plan)} ${quote.periods.toLocaleString('th-TH')} งวด`;
+  document.getElementById('instScheduleTotal').textContent = `${money(quote.total)} บาท`;
+}
+
+function calculateInstallmentQuote() {
+  const quote = getInstallmentCalculatorQuote();
+  if (!quote) return null;
+  const whole = value => Math.round(Number(value || 0)).toLocaleString('th-TH');
+  const decimal = Number(quote.perPeriod || 0).toLocaleString('th-TH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+  document.getElementById('instCalcGoldAmount').textContent = whole(quote.goldAmount);
+  document.getElementById('instCalcProfitAmount').textContent = whole(quote.profit);
+  document.getElementById('instCalcTotal').textContent = whole(quote.total);
+  document.getElementById('instCalcPeriods').textContent = quote.periods.toLocaleString('th-TH');
+  document.getElementById('instCalcPerPeriod').textContent = decimal;
+  document.getElementById('instCalcPlanText').textContent =
+    `ผ่อน${installmentPeriodLabel(quote.plan)} เป็นเวลา ${quote.months} เดือน · ${quote.periods.toLocaleString('th-TH')} งวด`;
+  renderInstallmentScheduleTable(quote);
+  return quote;
+}
+
+function renderInstallmentCalculator() {
+  const spotEl = document.getElementById('instCalcSpot');
+  if (!spotEl) return;
+  const startDateInput = document.getElementById('instCalcStartDate');
+  if (startDateInput && !startDateInput.value) startDateInput.value = isoToDateInput(new Date());
+  spotEl.textContent = Math.round(spot).toLocaleString('th-TH');
+  const sourceStatus = document.getElementById('spotStatus')?.textContent || '';
+  const meta = document.getElementById('instCalcRateMeta');
+  if (meta) {
+    meta.textContent = sourceStatus
+      ? sourceStatus.replace(/^[✓⚠]\s*/, '')
+      : `อัปเดตล่าสุด ${new Date(spotUpdatedAt || Date.now()).toLocaleString('th-TH')}`;
+  }
+  calculateInstallmentQuote();
+}
+
+function selectInstallmentCalcPlan(plan, button) {
+  document.getElementById('instCalcPlan').value = plan;
+  document.querySelectorAll('#page-installment-calculator [data-plan]').forEach(el => el.classList.remove('active'));
+  button.classList.add('active');
+  calculateInstallmentQuote();
+}
+
+function selectInstallmentCalcMonths(months, button) {
+  document.getElementById('instCalcMonths').value = months;
+  document.querySelectorAll('#page-installment-calculator .inst-segments.months .inst-segment').forEach(el => el.classList.remove('active'));
+  button.classList.add('active');
+  calculateInstallmentQuote();
+}
+
+async function refreshInstallmentGoldRate() {
+  const button = document.getElementById('instCalcRefreshBtn');
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'กำลังอัปเดต...';
+  }
+  const ok = await fetchSpot();
+  renderInstallmentCalculator();
+  if (button) {
+    button.disabled = false;
+    button.textContent = '↻ อัปเดตราคา';
+  }
+  showToast(ok ? 'อัปเดตราคาทองล่าสุดแล้ว' : 'ดึงราคาไม่สำเร็จ ใช้ราคาที่บันทึกล่าสุด', ok ? 'success' : 'error');
+}
+
+function printInstallmentSchedule() {
+  document.body.classList.add('print-installment-schedule');
+  const cleanup = () => document.body.classList.remove('print-installment-schedule');
+  window.addEventListener('afterprint', cleanup, { once:true });
+  window.print();
+  setTimeout(cleanup, 500);
+}
+
+function startInstallmentFromCalculator() {
+  const quote = calculateInstallmentQuote();
+  if (!quote) return;
+  openInstallmentModal();
+  if (!document.getElementById('installmentModal')?.classList.contains('open')) return;
+  document.getElementById('instItem').value = `${quote.typeLabel} น้ำหนัก ${quote.weightLabel}`;
+  document.getElementById('instGoldPrice').value = Math.round(quote.goldAmount);
+  document.getElementById('instProfitAdd').value = Math.round(quote.profit);
+  document.getElementById('instFinalPrice').value = Math.round(quote.total);
+  document.getElementById('instPeriodType').value = quote.plan;
+  document.getElementById('instPeriods').value = quote.periods;
+  document.getElementById('instStartDate').value = quote.startDate;
+  calcInstallment();
 }
 
 // ============ PRICE CALC ============
@@ -4344,8 +4755,12 @@ function getInstallmentBalance(c) {
 function getInstallmentNextDue(c) {
   if (!c || c.status === 'closed' || c.status === 'void' || getInstallmentBalance(c) <= 0) return null;
   const paidPeriods = (c.payments || []).length;
-  const firstDue = c.firstDueDate || addPeriod(c.startDate || new Date().toISOString(), c.periodType || 'monthly', 1).toISOString();
-  return addPeriod(firstDue, c.periodType || 'monthly', paidPeriods);
+  const periodType = c.periodType || 'monthly';
+  const start = new Date(c.startDate || new Date().toISOString());
+  const defaultFirstDue = addPeriod(start, periodType, 1);
+  const firstDue = c.firstDueDate ? new Date(c.firstDueDate) : defaultFirstDue;
+  const usesDefaultCycle = !c.firstDueDate || isoToDateInput(firstDue) === isoToDateInput(defaultFirstDue);
+  return usesDefaultCycle ? addPeriod(start, periodType, paidPeriods + 1) : addPeriod(firstDue, periodType, paidPeriods);
 }
 
 function getInstallmentRuntimeStatus(c) {
@@ -4709,8 +5124,24 @@ function showInstallmentContract(id) {
   const shop = getShopSettings();
   const paid = getInstallmentPaid(c);
   const balance = getInstallmentBalance(c);
-  const rows = (c.payments || []).map((p,i)=>`
+  const paymentRows = (c.payments || []).map((p,i)=>`
     <div class="r-row"><span>งวดที่ ${i+1} · ${formatDateTH(p.date)}</span><span>${Number(p.amount||0).toLocaleString()} บาท</span></div>
+  `).join('');
+  const plannedSchedule = buildInstallmentSchedule({
+    total: c.finalPrice,
+    downPayment: c.downPayment,
+    periods: c.periods,
+    periodType: c.periodType,
+    startDate: isoToDateInput(c.startDate),
+    firstDueDate: c.firstDueDate
+  });
+  const scheduleRows = plannedSchedule.map((row,index)=>`
+    <tr>
+      <td>${row.period}</td>
+      <td>${formatDateTH(row.dueDate)}</td>
+      <td>${Number(row.amount||0).toLocaleString()}${index < (c.payments||[]).length ? '<span class="paid-mark">ชำระแล้ว</span>' : ''}</td>
+      <td>${Number(row.balance||0).toLocaleString()}</td>
+    </tr>
   `).join('');
   document.getElementById('receiptContent').innerHTML = `
     <div class="receipt" id="printReceipt">
@@ -4730,7 +5161,12 @@ function showInstallmentContract(id) {
       <div class="r-row"><span>จบสัญญา</span><span>${formatDateTH(c.endDate)}</span></div>
       <div class="r-row"><span>ชำระแล้ว</span><span>${paid.toLocaleString()} บาท</span></div>
       <div class="r-total"><span>คงเหลือ</span><span>${balance.toLocaleString()} บาท</span></div>
-      ${rows ? `<div style="margin-top:10px;font-weight:700;font-size:12px;">ประวัติชำระ</div>${rows}` : ''}
+      <div style="margin-top:10px;font-weight:700;font-size:12px;">ตารางกำหนดชำระ</div>
+      <table class="receipt-schedule">
+        <thead><tr><th>งวด</th><th>ครบกำหนด</th><th>ยอด</th><th>เหลือ</th></tr></thead>
+        <tbody>${scheduleRows}</tbody>
+      </table>
+      ${paymentRows ? `<div style="margin-top:10px;font-weight:700;font-size:12px;">ประวัติชำระจริง</div>${paymentRows}` : ''}
       <div class="thank">เอกสารนี้ใช้เป็นหลักฐานการตกลงผ่อนทอง<br>กรุณาเก็บไว้เพื่อตรวจสอบยอดชำระ</div>
     </div>
   `;
