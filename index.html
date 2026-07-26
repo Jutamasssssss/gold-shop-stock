@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<!-- build: installment-calculator-schedule-2026-07-26 -->
+<!-- build: gold-weight-options-save-status-2026-07-26 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบสต็อกทอง — ห้างทองร่ำรวยดี</title>
@@ -891,13 +891,23 @@
                 <div class="inst-form-group">
                   <label for="instCalcWeight">น้ำหนักทอง</label>
                   <select id="instCalcWeight" onchange="calculateInstallmentQuote()">
-                    <option value="0.25">1 สลึง</option>
-                    <option value="0.5">2 สลึง</option>
-                    <option value="0.75">3 สลึง</option>
-                    <option value="1" selected>1 บาท</option>
-                    <option value="2">2 บาท</option>
-                    <option value="3">3 บาท</option>
-                    <option value="5">5 บาท</option>
+                    <optgroup label="— หน่วยกรัม —">
+                      <option value="g0.2">0.2 กรัม</option>
+                      <option value="g0.3">0.3 กรัม</option>
+                      <option value="g0.5">0.5 กรัม</option>
+                      <option value="g0.6">0.6 กรัม</option>
+                      <option value="g1">1 กรัม</option>
+                    </optgroup>
+                    <optgroup label="— หน่วยสลึง/บาท —">
+                      <option value="0.125">ครึ่งสลึง</option>
+                      <option value="0.25">1 สลึง</option>
+                      <option value="0.5">2 สลึง</option>
+                      <option value="0.75">3 สลึง</option>
+                      <option value="1" selected>1 บาท</option>
+                      <option value="2">2 บาท</option>
+                      <option value="3">3 บาท</option>
+                      <option value="5">5 บาท</option>
+                    </optgroup>
                   </select>
                 </div>
                 <div class="inst-form-group full">
@@ -1032,8 +1042,10 @@
         <label>น้ำหนัก</label>
         <select id="addWeight" onchange="suggestGoldCostForWeight()">
           <optgroup label="— หน่วยกรัม —">
+            <option value="g0.2">0.2 กรัม</option>
             <option value="g0.3" selected>0.3 กรัม</option>
             <option value="g0.5">0.5 กรัม</option>
+            <option value="g0.6">0.6 กรัม</option>
             <option value="g1">1 กรัม</option>
           </optgroup>
           <optgroup label="— หน่วยสลึง —">
@@ -1692,7 +1704,7 @@ function applyRoleUI() {
 }
 
 const WEIGHT_LABELS = {
-  'g0.3':'0.3 กรัม', 'g0.5':'0.5 กรัม', 'g1':'1 กรัม',
+  'g0.2':'0.2 กรัม', 'g0.3':'0.3 กรัม', 'g0.5':'0.5 กรัม', 'g0.6':'0.6 กรัม', 'g1':'1 กรัม',
   0.5:'ครึ่งสลึง', 1:'1 สลึง', 2:'2 สลึง',
   4:'1 บาท', 8:'2 บาท', 12:'3 บาท', 16:'4 บาท', 20:'5 บาท',
   24:'6 บาท', 28:'7 บาท', 32:'8 บาท', 36:'9 บาท', 40:'10 บาท'
@@ -1899,8 +1911,6 @@ function loadLocalCache() {
 function setSaveStatus(status, type='info') {
   if (status === lastSaveStatus) return;
   lastSaveStatus = status;
-  if (status === 'saving') showToast('กำลังบันทึกข้อมูล...', 'info');
-  if (status === 'saved') showToast('บันทึกข้อมูลเรียบร้อย', 'success');
   if (status === 'error') showToast('บันทึกขึ้นเว็บไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ต', type);
 }
 
@@ -2480,7 +2490,10 @@ function getInstallmentCalculatorQuote() {
   const selectedType = typeSelect.options[typeSelect.selectedIndex];
   const selectedWeight = weightSelect.options[weightSelect.selectedIndex];
   const purityFactor = Number(selectedType?.dataset.factor || 1);
-  const weight = Math.max(0, Number(weightSelect.value || 0));
+  const weightRaw = String(weightSelect.value || '0');
+  const weight = weightRaw.startsWith('g')
+    ? Math.max(0, Number(weightRaw.slice(1)) || 0) / 15.244
+    : Math.max(0, Number(weightRaw) || 0);
   const profit = Math.max(0, Number(document.getElementById('instCalcProfit')?.value || 0));
   const plan = document.getElementById('instCalcPlan')?.value || 'monthly';
   const months = Math.min(6, Math.max(1, Number(document.getElementById('instCalcMonths')?.value || 1)));
@@ -3114,6 +3127,7 @@ function addProduct() {
   }
   transactions.push({ type:'buy', productCode:code, productName:name, cost, goldCost:goldBaseCost, laborCost, fee, qty, total:cost*qty, productType:type, productWeight:weight, weightLabel:WEIGHT_LABELS[weight]||weight, date:new Date().toISOString(), source });
   save(); closeModal('addModal'); renderStock(); renderDashboard();
+  showToast('บันทึกสินค้าเข้าสต็อกแล้ว', 'success');
 }
 
 // ============ BUY MODAL ============
