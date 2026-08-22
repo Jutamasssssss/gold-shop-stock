@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<!-- build: gold-weight-options-save-status-2026-07-26 -->
+<!-- build: durable-savings-and-stock-dedupe-2026-08-22 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบสต็อกทอง — ห้างทองร่ำรวยดี</title>
@@ -1580,6 +1580,7 @@ let products = [];
 let transactions = [];
 let pawns = [];
 let savingsAccounts = [];
+let savingsPaymentLedger = [];
 let installmentContracts = [];
 let customers = [];
 let selectedSaleProduct = null;
@@ -1730,12 +1731,14 @@ const remoteShadow = {
   customers: new Map(),
   pawns: new Map(),
   savings: new Map(),
+  savingsPayments: new Map(),
   installments: new Map(),
   transactions: new Map(),
   products: new Map()
 };
-const DATA_COLLECTIONS = ['products','transactions','pawns','savings','installments','customers'];
+const DATA_COLLECTIONS = ['products','transactions','pawns','savings','savingsPayments','installments','customers'];
 const remoteCollectionsReady = new Set();
+const productDedupeInFlight = new Set();
 
 function cloudInitialSyncReady() {
   return DATA_COLLECTIONS.every(col => remoteCollectionsReady.has(col));
@@ -1777,6 +1780,7 @@ function makeStableDocIds() {
     if (!p.id) p.id = p.ticket || p.pawnNo || id;
     p._docId = id;
   });
+  savingsAccounts = savingsAccounts.map(normalizeSavingsAccount);
   savingsAccounts.forEach((s, i) => {
     const id = s._docId || s.id || s.accountNo || ('sv_' + i);
     if (!s.id) s.id = id;
@@ -1804,6 +1808,7 @@ function getSaveSnapshot() {
     customers: cloneData(customers),
     pawns: cloneData(pawns),
     savings: cloneData(savingsAccounts),
+    savingsPayments: cloneData(buildSavingsPaymentLedger(savingsAccounts)),
     installments: cloneData(installmentContracts),
     transactions: cloneData(transactions),
     products: cloneData(products)
@@ -1834,17 +1839,211 @@ function getDocTime(doc) {
   return Number.isFinite(time) ? time : 0;
 }
 
+function getCollectionItemId(item, idField, index=0) {
+  return String(item?.[idField] || item?._docId || item?.id || item?.code || index);
+}
+
+function simpleStableHash(value) {
+  let hash = 2166136261;
+  const text = String(value || '');
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function normalizeProductName(name) {
+  return String(name || '').trim().toLocaleLowerCase('th-TH').replace(/\s+/g, '');
+}
+
+function productUpdateTime(product) {
+  const explicit = getDocTime(product) || Date.parse(product?.updatedAt || '') || 0;
+  const latestLot = (product?.lots || []).reduce((latest, lot) => {
+    const time = Date.parse(lot?.updatedAt || lot?.date || '') || 0;
+    return Math.max(latest, time);
+  }, 0);
+  return Math.max(explicit, latestLot);
+}
+
+function makeDeletedDocument(doc) {
+  const now = new Date().toISOString();
+  return { ...doc, _deleted:true, _deletedAt:now, _updatedAt:now };
+}
+
+function saveDeletedDocument(col, id, doc) {
+  if (!window._fbReady || !id) return Promise.resolve();
+  return window._fb.saveDoc(col, String(id), makeDeletedDocument(doc));
+}
+
+function dedupeRemoteProducts(items) {
+  const result = (Array.isArray(items) ? items : []).map(item => ({ ...item }));
+  const groups = new Map();
+  result.forEach((product, index) => {
+    if (product?._deleted) return;
+    const key = normalizeProductName(product?.name);
+    if (!key) return;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ product, index });
+  });
+
+  groups.forEach(group => {
+    if (group.length < 2) return;
+    group.sort((a, b) => {
+      const timeDiff = productUpdateTime(b.product) - productUpdateTime(a.product);
+      if (timeDiff) return timeDiff;
+      return getCollectionItemId(b.product, 'code').localeCompare(getCollectionItemId(a.product, 'code'), 'th');
+    });
+    group.slice(1).forEach(({ product, index }) => {
+      const id = getCollectionItemId(product, 'code', index);
+      const tombstone = makeDeletedDocument(product);
+      result[index] = tombstone;
+      if (window._fbReady && !productDedupeInFlight.has(id)) {
+        productDedupeInFlight.add(id);
+        window._fb.saveDoc('products', id, tombstone)
+          .catch(err => console.error('Duplicate product cleanup failed:', id, err))
+          .finally(() => productDedupeInFlight.delete(id));
+      }
+    });
+  });
+  return result;
+}
+
+function normalizeSavingsAccount(account) {
+  const sv = { ...(account || {}) };
+  const accountId = String(sv.id || sv.accountNo || sv._docId || 'savings');
+  const occurrences = new Map();
+  sv.payments = (Array.isArray(sv.payments) ? sv.payments : []).map(payment => {
+    const p = { ...(payment || {}) };
+    const fingerprint = [p.date || '', Number(p.deposit || 0), Number(p.bonus || 0), Number(p.total || 0), Number(p.goldPrice || 0), Number(p.goldWeight || 0)].join('|');
+    const occurrence = occurrences.get(fingerprint) || 0;
+    occurrences.set(fingerprint, occurrence + 1);
+    const id = p.id || `svp_legacy_${simpleStableHash(`${accountId}|${fingerprint}|${occurrence}`)}`;
+    return {
+      ...p,
+      id,
+      createdAt: p.createdAt || p.date || sv.date || '',
+      _updatedAt: p._updatedAt || p.updatedAt || p.createdAt || p.date || sv._updatedAt || sv.date || ''
+    };
+  });
+  sv._deletedPayments = (Array.isArray(sv._deletedPayments) ? sv._deletedPayments : [])
+    .filter(item => item?.id)
+    .map(item => ({ id:String(item.id), deletedAt:item.deletedAt || item._updatedAt || new Date(0).toISOString() }));
+  sv.saved = sv.payments.reduce((sum, payment) => sum + Number(payment?.total || 0), 0);
+  return sv;
+}
+
+function savingsPaymentUpdateTime(payment) {
+  const time = Date.parse(payment?._updatedAt || payment?.updatedAt || payment?.createdAt || payment?.date || '');
+  return Number.isFinite(time) ? time : 0;
+}
+
+function mergeSavingsAccountDocs(localAccount, remoteAccount) {
+  const local = normalizeSavingsAccount(localAccount);
+  const remote = normalizeSavingsAccount(remoteAccount);
+  const localIsNewer = getDocTime(local) > getDocTime(remote);
+  const base = localIsNewer ? { ...remote, ...local } : { ...local, ...remote };
+  const deletedMap = new Map();
+  [...(remote._deletedPayments || []), ...(local._deletedPayments || [])].forEach(item => {
+    const current = deletedMap.get(String(item.id));
+    if (!current || Date.parse(item.deletedAt || '') > Date.parse(current.deletedAt || '')) {
+      deletedMap.set(String(item.id), item);
+    }
+  });
+
+  const paymentMap = new Map();
+  [...(remote.payments || []), ...(local.payments || [])].forEach(payment => {
+    const id = String(payment.id);
+    const current = paymentMap.get(id);
+    if (!current || savingsPaymentUpdateTime(payment) >= savingsPaymentUpdateTime(current)) paymentMap.set(id, payment);
+  });
+  deletedMap.forEach((_item, id) => paymentMap.delete(id));
+  const payments = [...paymentMap.values()].sort((a, b) => savingsPaymentTime(a) - savingsPaymentTime(b) || String(a.id).localeCompare(String(b.id)));
+  return {
+    ...base,
+    payments,
+    _deletedPayments:[...deletedMap.values()],
+    saved:payments.reduce((sum, payment) => sum + Number(payment?.total || 0), 0),
+    _updatedAt: localIsNewer ? local._updatedAt : remote._updatedAt
+  };
+}
+
+function buildSavingsPaymentLedger(accounts=savingsAccounts) {
+  const ledger = [];
+  (accounts || []).forEach(rawAccount => {
+    const account = normalizeSavingsAccount(rawAccount);
+    const accountId = String(account._docId || account.id || account.accountNo || '');
+    if (!accountId) return;
+    account.payments.forEach(payment => {
+      ledger.push({
+        _docId:`${accountId}__${payment.id}`,
+        accountId,
+        paymentId:String(payment.id),
+        payment:{ ...payment },
+        _updatedAt:payment._updatedAt || account._updatedAt || payment.date || account.date || ''
+      });
+    });
+    (account._deletedPayments || []).forEach(item => {
+      ledger.push({
+        _docId:`${accountId}__${item.id}`,
+        accountId,
+        paymentId:String(item.id),
+        _deleted:true,
+        _deletedAt:item.deletedAt,
+        _updatedAt:item.deletedAt
+      });
+    });
+  });
+  return ledger;
+}
+
+function applySavingsPaymentLedger(accounts, ledgerItems) {
+  const byAccount = new Map();
+  (ledgerItems || []).forEach(item => {
+    const accountId = String(item?.accountId || '');
+    if (!accountId) return;
+    if (!byAccount.has(accountId)) byAccount.set(accountId, { payments:[], _deletedPayments:[] });
+    const group = byAccount.get(accountId);
+    if (item._deleted) {
+      group._deletedPayments.push({ id:String(item.paymentId || ''), deletedAt:item._deletedAt || item._updatedAt || '' });
+    } else if (item.payment) {
+      group.payments.push({ ...item.payment, id:item.payment.id || item.paymentId, _updatedAt:item.payment._updatedAt || item._updatedAt || '' });
+    }
+  });
+  return (accounts || []).map(account => {
+    const accountId = String(account?._docId || account?.id || account?.accountNo || '');
+    const ledgerAccount = byAccount.get(accountId);
+    return ledgerAccount ? mergeSavingsAccountDocs(account, { ...account, ...ledgerAccount }) : normalizeSavingsAccount(account);
+  });
+}
+
+function scheduleSavingsLedgerMigration() {
+  if (!remoteCollectionsReady.has('savings') || !remoteCollectionsReady.has('savingsPayments')) return;
+  const remoteIds = new Set((savingsPaymentLedger || []).map((item, i) => getCollectionItemId(item, '_docId', i)));
+  const needsMigration = buildSavingsPaymentLedger(savingsAccounts).some((item, i) => !remoteIds.has(getCollectionItemId(item, '_docId', i)));
+  if (needsMigration) setTimeout(queueRemoteSave, 500);
+}
+
 function mergeRemoteWithLocal(col, localItems, remoteItems, idField) {
   const localMap = new Map();
   localItems.forEach((item, i) => {
-    const id = item[idField] || item._docId || item.id || item.code || String(i);
-    localMap.set(String(id), item);
+    const id = getCollectionItemId(item, idField, i);
+    if (!item?._deleted) localMap.set(id, item);
   });
 
+  const remoteDeletedIds = new Set((remoteItems || [])
+    .filter(item => item?._deleted)
+    .map((item, i) => getCollectionItemId(item, idField, i)));
+  const activeRemoteItems = (remoteItems || []).filter(item => !item?._deleted);
   let keptLocalNewer = false;
-  const merged = remoteItems.map((remoteItem, i) => {
-    const id = remoteItem[idField] || remoteItem._docId || remoteItem.id || remoteItem.code || String(i);
-    const localItem = localMap.get(String(id));
+  const merged = activeRemoteItems.map((remoteItem, i) => {
+    const id = getCollectionItemId(remoteItem, idField, i);
+    const localItem = localMap.get(id);
+    if (col === 'savings' && localItem) {
+      const combined = mergeSavingsAccountDocs(localItem, remoteItem);
+      if (stableJson(combined) !== stableJson(remoteItem)) keptLocalNewer = true;
+      return combined;
+    }
     if (localItem && getDocTime(localItem) > getDocTime(remoteItem)) {
       keptLocalNewer = true;
       return localItem;
@@ -1853,13 +2052,14 @@ function mergeRemoteWithLocal(col, localItems, remoteItems, idField) {
   });
 
   localMap.forEach((localItem, id) => {
-    const existsRemote = remoteItems.some((remoteItem, i) => {
-      const remoteId = remoteItem[idField] || remoteItem._docId || remoteItem.id || remoteItem.code || String(i);
-      return String(remoteId) === id;
+    if (remoteDeletedIds.has(id)) return;
+    const existsRemote = activeRemoteItems.some((remoteItem, i) => {
+      const remoteId = getCollectionItemId(remoteItem, idField, i);
+      return remoteId === id;
     });
     if (!existsRemote && getDocTime(localItem) > 0) {
       keptLocalNewer = true;
-      merged.push(localItem);
+      merged.push(col === 'savings' ? normalizeSavingsAccount(localItem) : localItem);
     }
   });
 
@@ -1877,13 +2077,10 @@ function saveLocalCache() {
 }
 
 function normalizeAppCollections() {
-  products = (Array.isArray(products) ? products : []).map(p => ({ ...p, lots:Array.isArray(p?.lots) ? p.lots : [] }));
+  products = (Array.isArray(products) ? products : []).filter(p => !p?._deleted).map(p => ({ ...p, lots:Array.isArray(p?.lots) ? p.lots : [] }));
   transactions = Array.isArray(transactions) ? transactions : [];
   pawns = Array.isArray(pawns) ? pawns : [];
-  savingsAccounts = (Array.isArray(savingsAccounts) ? savingsAccounts : []).map(sv => {
-    const payments = Array.isArray(sv?.payments) ? sv.payments : [];
-    return { ...sv, payments, saved:payments.reduce((sum,p)=>sum+Number(p?.total || 0),0) };
-  });
+  savingsAccounts = (Array.isArray(savingsAccounts) ? savingsAccounts : []).filter(sv => !sv?._deleted).map(normalizeSavingsAccount);
   installmentContracts = (Array.isArray(installmentContracts) ? installmentContracts : []).map(c => ({ ...c, payments:Array.isArray(c?.payments) ? c.payments : [] }));
   customers = (Array.isArray(customers) ? customers : []).map(c => ({ ...c, transactions:Array.isArray(c?.transactions) ? c.transactions : [] }));
 }
@@ -1927,6 +2124,7 @@ async function pushSnapshotToCloud(snapshot) {
   snapshot.customers.forEach(c => addChanged('customers', c.id, c));
   snapshot.pawns.forEach(p => addChanged('pawns', p._docId, p));
   snapshot.savings.forEach(s => addChanged('savings', s._docId, s));
+  snapshot.savingsPayments.forEach(item => addChanged('savingsPayments', item._docId, item));
   snapshot.installments.forEach(c => addChanged('installments', c._docId, c));
   snapshot.transactions.forEach(t => addChanged('transactions', t._docId, t));
   snapshot.products.forEach(p => addChanged('products', p.id || p.code, p));
@@ -1987,6 +2185,31 @@ function save() {
   queueRemoteSave();
 }
 
+async function waitForCloudReady(timeoutMs=8000) {
+  const started = Date.now();
+  while (window._fbReady && !cloudInitialSyncReady() && Date.now() - started < timeoutMs) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  return window._fbReady && cloudInitialSyncReady();
+}
+
+async function persistSavingsAccountNow(account) {
+  save();
+  if (!await waitForCloudReady()) return false;
+  const accountId = String(account?._docId || account?.id || account?.accountNo || '');
+  if (!accountId) return false;
+  const accountSnapshot = cloneData(account);
+  const ledgerDocs = buildSavingsPaymentLedger([accountSnapshot]);
+  await Promise.all([
+    window._fb.saveDoc('savings', accountId, accountSnapshot),
+    ...ledgerDocs.map(item => window._fb.saveDoc('savingsPayments', item._docId, item))
+  ]);
+  remoteShadow.savings.set(accountId, stableJson(accountSnapshot));
+  ledgerDocs.forEach(item => remoteShadow.savingsPayments.set(String(item._docId), stableJson(item)));
+  lastCloudSavedAt = Date.now();
+  return true;
+}
+
 function setupRealtimeSync() {
   if (!window._fbReady) {
     setTimeout(setupRealtimeSync, 500);
@@ -1995,8 +2218,9 @@ function setupRealtimeSync() {
 
   window._fb.listen('products', (items) => {
     if (!acceptRemoteSnapshot('products')) return;
-    const merged = mergeRemoteWithLocal('products', products, items, 'code');
-    rememberRemoteCollection('products', items, 'code');
+    const cleanedItems = dedupeRemoteProducts(items);
+    const merged = mergeRemoteWithLocal('products', products, cleanedItems, 'code');
+    rememberRemoteCollection('products', cleanedItems, 'code');
     products = merged;
     normalizeAppCollections();
     saveLocalCache();
@@ -2026,12 +2250,25 @@ function setupRealtimeSync() {
 
   window._fb.listen('savings', (items) => {
     if (!acceptRemoteSnapshot('savings')) return;
-    const merged = mergeRemoteWithLocal('savings', savingsAccounts, items, '_docId');
+    let merged = mergeRemoteWithLocal('savings', savingsAccounts, items, '_docId');
     rememberRemoteCollection('savings', items, '_docId');
+    merged = applySavingsPaymentLedger(merged, savingsPaymentLedger);
     savingsAccounts = merged;
     normalizeAppCollections();
     saveLocalCache();
     if (typeof renderSavings === 'function') renderSavings();
+    scheduleSavingsLedgerMigration();
+  });
+
+  window._fb.listen('savingsPayments', (items) => {
+    if (!acceptRemoteSnapshot('savingsPayments')) return;
+    savingsPaymentLedger = Array.isArray(items) ? items : [];
+    rememberRemoteCollection('savingsPayments', savingsPaymentLedger, '_docId');
+    savingsAccounts = applySavingsPaymentLedger(savingsAccounts, savingsPaymentLedger);
+    normalizeAppCollections();
+    saveLocalCache();
+    if (typeof renderSavings === 'function') renderSavings();
+    scheduleSavingsLedgerMigration();
   });
 
   window._fb.listen('installments', (items) => {
@@ -2955,8 +3192,10 @@ function renderStock() {
 
 function deleteProduct(code) {
   if (!requirePerm('deleteProduct', 'ไม่มีสิทธิ์ลบสินค้า')) return;
+  const product = products.find(p => p.code === code);
+  if (!product) return;
   if (!confirm('ลบสินค้า '+code+' ออกจากสต็อก?')) return;
-  if (window._fbReady) window._fb.deleteDoc('products', code);
+  saveDeletedDocument('products', code, product).catch(err => console.error('Product delete failed:', err));
   products = products.filter(p => p.code !== code);
   save(); renderStock(); renderDashboard();
 }
@@ -3092,10 +3331,19 @@ function addProduct() {
     alert('กรุณากรอกรหัส ชื่อ ต้นทุน และจำนวนให้ถูกต้อง');
     return;
   }
+  const sameNameProduct = products.find(product =>
+    normalizeProductName(product.name) === normalizeProductName(name) &&
+    product.code !== originalCode && product.code !== code
+  );
+  if (sameNameProduct) {
+    alert(`มีสินค้า “${sameNameProduct.name}” อยู่แล้วในรหัส ${sameNameProduct.code}\nกรุณาแก้ไขหรือเพิ่มล็อตในรายการเดิม เพื่อป้องกันสต๊อกซ้ำ`);
+    return;
+  }
 
   if (editCode) {
     const p = products.find(x => x.code === originalCode);
     if (!p) return;
+    const originalProduct = cloneData(p);
     if (code !== originalCode && products.some(x => x.code === code)) {
       alert('รหัสสินค้านี้ถูกใช้แล้ว');
       return;
@@ -3108,7 +3356,10 @@ function addProduct() {
       if (t.productCode === originalCode) t.productCode = code;
       if (t.productName && originalCode === editCode && t.productCode === code) t.productName = name;
     });
-    if (window._fbReady && code !== originalCode) window._fb.deleteDoc('products', originalCode);
+    if (window._fbReady && code !== originalCode) {
+      saveDeletedDocument('products', originalCode, { ...originalProduct, code:originalCode, id:originalProduct.id || originalCode })
+        .catch(err => console.error('Old product code cleanup failed:', err));
+    }
     save(); closeModal('addModal'); renderStock(); renderDashboard(); renderBarcodeList();
     showToast('บันทึกการแก้ไขสินค้าแล้ว', 'success');
     return;
@@ -4597,21 +4848,26 @@ function editSavingsPayment(id, index) {
   document.getElementById('savPayModal').classList.add('open');
 }
 
-function confirmSavingsPayment() {
+async function confirmSavingsPayment() {
   const id = document.getElementById('savPayId').value;
   const sv = savingsAccounts.find(x=>x.id===id);
   if (!sv) return;
+  const saveBtn = document.getElementById('savPaySaveBtn');
+  if (saveBtn?.disabled) return;
   const editIndexRaw = document.getElementById('savPayIndex').value;
   const deposit = parseFloat(document.getElementById('savPayDeposit').value)||0;
   const topupPct = parseFloat(document.getElementById('savPayTopup').value)||0;
-  const paymentDate = dateInputToIso(document.getElementById('savPayDate').value);
+  const paymentDateInput = document.getElementById('savPayDate').value;
   const goldPrice = parseFloat(document.getElementById('savPayGoldPrice').value)||spot;
   if (!deposit) { alert('กรุณากรอกยอดที่ลูกค้าฝาก'); return; }
+  if (!paymentDateInput) { alert('กรุณาเลือกวันที่รับยอดออม'); return; }
+  const paymentDate = dateInputToIso(paymentDateInput);
   const bonus = Math.round(deposit * topupPct / 100);
   const total = deposit + bonus;
   const goldWeight = goldPrice > 0 ? deposit / goldPrice : 0;
   const oldPayment = editIndexRaw === '' ? null : sv.payments[Number(editIndexRaw)];
   const paymentId = oldPayment?.id || `svp_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+  const changedAt = new Date().toISOString();
   const payment = {
     id: paymentId,
     deposit,
@@ -4620,56 +4876,79 @@ function confirmSavingsPayment() {
     topupPct,
     goldPrice,
     goldWeight,
-    date: paymentDate
+    date: paymentDate,
+    createdAt:oldPayment?.createdAt || changedAt,
+    _updatedAt:changedAt
   };
-  if (editIndexRaw === '') {
-    sv.payments.push(payment);
-    addCustomerTransaction(sv.customer, 'savings', 'ออมทอง', total);
-    transactions.push({
-      type:'savings_deposit',
-      savingsId: sv.id,
-      savingsPaymentId: paymentId,
-      productName:'ออมทอง-'+sv.id,
-      total,
-      amount: deposit,
-      qty:1,
-      customer:sv.customer,
-      customerName: sv.customerName || sv.customer,
-      customerPhone: sv.customerPhone || sv.phone || '',
-      customerId: sv.customerId || '',
-      goldPrice,
-      goldWeight,
-      date: paymentDate
-    });
-  } else {
-    sv.payments[Number(editIndexRaw)] = payment;
-    const linkedTxn = transactions.find(t =>
-      t.savingsPaymentId === paymentId ||
-      (!t.savingsPaymentId && t.type === 'savings_deposit' && t.productName === 'ออมทอง-'+sv.id &&
-        String(t.date || '') === String(oldPayment?.date || '') && Number(t.total || 0) === Number(oldPayment?.total || 0))
-    );
-    if (linkedTxn) Object.assign(linkedTxn, {
-      savingsId: sv.id,
-      savingsPaymentId: paymentId,
-      total,
-      amount: deposit,
-      goldPrice,
-      goldWeight,
-      date: paymentDate,
-      updatedAt: new Date().toISOString()
-    });
+  const oldText = saveBtn?.textContent || '';
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'กำลังบันทึก...';
   }
-  sv.saved = sv.payments.reduce((sum,p)=>sum+(p.total||0),0);
-  save(); closeModal('savPayModal'); renderSavings();
-  showSavingsSummary(id, editIndexRaw === '' ? 'payment' : 'view');
+  try {
+    if (editIndexRaw === '') {
+      sv.payments.push(payment);
+      addCustomerTransaction(sv.customer, 'savings', 'ออมทอง', total);
+      transactions.push({
+        type:'savings_deposit',
+        savingsId: sv.id,
+        savingsPaymentId: paymentId,
+        productName:'ออมทอง-'+sv.id,
+        total,
+        amount: deposit,
+        qty:1,
+        customer:sv.customer,
+        customerName: sv.customerName || sv.customer,
+        customerPhone: sv.customerPhone || sv.phone || '',
+        customerId: sv.customerId || '',
+        goldPrice,
+        goldWeight,
+        date: paymentDate,
+        _updatedAt:changedAt
+      });
+    } else {
+      sv.payments[Number(editIndexRaw)] = payment;
+      const linkedTxn = transactions.find(t =>
+        t.savingsPaymentId === paymentId ||
+        (!t.savingsPaymentId && t.type === 'savings_deposit' && t.productName === 'ออมทอง-'+sv.id &&
+          String(t.date || '') === String(oldPayment?.date || '') && Number(t.total || 0) === Number(oldPayment?.total || 0))
+      );
+      if (linkedTxn) Object.assign(linkedTxn, {
+        savingsId: sv.id,
+        savingsPaymentId: paymentId,
+        total,
+        amount: deposit,
+        goldPrice,
+        goldWeight,
+        date: paymentDate,
+        updatedAt: changedAt,
+        _updatedAt:changedAt
+      });
+    }
+    sv.saved = sv.payments.reduce((sum,p)=>sum+Number(p.total||0),0);
+    await persistSavingsAccountNow(sv);
+    closeModal('savPayModal');
+    renderSavings();
+    showSavingsSummary(id, editIndexRaw === '' ? 'payment' : 'view');
+  } catch (err) {
+    console.error('Savings payment save failed:', err);
+    showToast('บันทึกยอดออมขึ้นเว็บไม่สำเร็จ ข้อมูลยังเก็บไว้ในเครื่อง', 'error');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = oldText;
+    }
+  }
 }
 
-function showSavingsPayments(id) {
+async function showSavingsPayments(id) {
   const sv = savingsAccounts.find(x=>x.id===id);
   if (!sv) return;
   const chronological = getSavingsPaymentsChronological(sv);
   const rows = chronological.map(({payment:p, periodNo}) => {
-    const d = new Date(p.date || Date.now()).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const d = p.date
+      ? new Date(p.date).toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'})
+      : 'ไม่ระบุวันที่';
     return `${periodNo}. ${d} · ฝาก ${(p.deposit||0).toLocaleString()} + โบนัส ${(p.bonus||0).toLocaleString()} = ${(p.total||0).toLocaleString()}`;
   }).join('\n');
   const choice = prompt(`งวดออมทอง ${sv.id} - ${sv.customer}\n\n${rows || 'ยังไม่มีงวดออม'}\n\nพิมพ์เลขงวดเพื่อแก้ไข หรือพิมพ์ d ตามด้วยเลขงวดเพื่อลบ เช่น d2`);
@@ -4682,6 +4961,9 @@ function showSavingsPayments(id) {
     if (!confirm(`ลบงวดที่ ${selected.periodNo}?`)) return;
     const removed = sv.payments[idx];
     sv.payments.splice(idx, 1);
+    const deletedAt = new Date().toISOString();
+    sv._deletedPayments = Array.isArray(sv._deletedPayments) ? sv._deletedPayments : [];
+    sv._deletedPayments.push({ id:String(removed.id), deletedAt });
     const removeTxn = transactions.find(t =>
       t.savingsPaymentId === removed?.id ||
       (!t.savingsPaymentId && t.type === 'savings_deposit' && t.productName === 'ออมทอง-'+sv.id &&
@@ -4692,8 +4974,15 @@ function showSavingsPayments(id) {
       transactions = transactions.filter(t => t !== removeTxn);
       if (window._fbReady && docId) window._fb.deleteDoc('transactions', docId);
     }
-    sv.saved = sv.payments.reduce((sum,p)=>sum+(p.total||0),0);
-    save(); renderSavings(); showToast('ลบงวดออมทองแล้ว', 'info');
+    sv.saved = sv.payments.reduce((sum,p)=>sum+Number(p.total||0),0);
+    try {
+      await persistSavingsAccountNow(sv);
+      renderSavings();
+      showToast('ลบงวดออมทองแล้ว', 'info');
+    } catch (err) {
+      console.error('Savings payment delete failed:', err);
+      showToast('ลบงวดแล้วในเครื่อง แต่ยังส่งขึ้นเว็บไม่สำเร็จ', 'error');
+    }
     return;
   }
   const selected = chronological[Number(value) - 1];
@@ -4706,10 +4995,8 @@ function deleteSavings(id) {
   const sv = savingsAccounts.find(x=>x.id===id);
   if (!sv) return;
   if (!confirm(`⚠️ ลบบัญชีออมทอง?\n\nรหัส: ${sv.id}\nลูกค้า: ${sv.customer}\nยอดออม: ${sv.saved.toLocaleString()} บาท\n\nการลบจะไม่สามารถย้อนกลับได้`)) return;
-  if (window._fbReady) {
-    const docId = sv._docId || sv.id || sv.accountNo;
-    if (docId) window._fb.deleteDoc('savings', docId);
-  }
+  const docId = sv._docId || sv.id || sv.accountNo;
+  saveDeletedDocument('savings', docId, sv).catch(err => console.error('Savings account delete failed:', err));
   savingsAccounts = savingsAccounts.filter(x=>x.id!==id);
   save(); renderSavings();
   showToast(`ลบบัญชี ${id} เรียบร้อย`, 'info');
@@ -5203,8 +5490,10 @@ function showSavingsSummary(id, mode) {
   const bonusPct   = Math.round(totalBonus/maxBar*100);
 
   // payment rows — แค่วันที่ + ฝาก + โบนัส + รวม (ไม่มีราคาทอง)
-  const paymentRows = chronologicalPayments.slice(-5).reverse().map(({ payment:p, periodNo }) => {
-    const d = new Date(p.date || Date.now()).toLocaleDateString('th-TH',{month:'short',day:'numeric'});
+  const paymentRows = chronologicalPayments.slice().reverse().map(({ payment:p, periodNo }) => {
+    const d = p.date
+      ? new Date(p.date).toLocaleDateString('th-TH',{month:'short',day:'numeric'})
+      : 'ไม่ระบุวันที่';
     return `<tr>
       <td style="padding:8px 10px;font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;">งวดที่ ${periodNo} &nbsp; ${d}</td>
       <td style="padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f0e0e0;">${(p.deposit||0).toLocaleString()}</td>
@@ -5286,7 +5575,7 @@ function showSavingsSummary(id, mode) {
 
       <!-- ตารางประวัติงวด -->
       ${sv.payments.length ? `<div style="margin-bottom:4px;">
-        <div style="font-size:10px;color:#aaa;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">ประวัติล่าสุด 5 งวด</div>
+        <div style="font-size:10px;color:#aaa;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">ประวัติการออมทั้งหมด ${sv.payments.length} งวด</div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr style="background:#fdf0f0;">
