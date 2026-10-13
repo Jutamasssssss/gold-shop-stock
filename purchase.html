@@ -24,7 +24,12 @@ dialog{border:1px solid #d6d9cf;border-radius:8px;padding:0;width:min(770px,calc
 </style>
 </head>
 <body>
-<div class="layout">
+<section id="authGate" style="max-width:400px;margin:12vh auto;padding:24px">
+ <h1 style="font-size:24px">ห้างทองร่ำรวยดี</h1><p style="margin:8px 0 24px">ตัดซื้อทองร้านส่ง</p>
+ <form id="authForm"><label for="authUsername">ชื่อผู้ใช้ / อีเมล</label><input id="authUsername" autocomplete="username" value="admin" required><label for="authPassword" style="margin-top:16px">รหัสผ่าน</label><input id="authPassword" type="password" autocomplete="current-password" required><p id="authError" class="error" role="alert"></p><button id="authSubmit" type="submit" class="primary" style="width:100%;margin-top:12px">เข้าสู่ระบบ</button></form>
+ <noscript>กรุณาเปิด JavaScript เพื่อเข้าสู่ระบบ</noscript>
+</section>
+<div class="layout" id="purchaseApp" hidden>
 <aside class="sidebar">
  <div class="brand"><strong>ห้างทองร่ำรวยดี</strong><small>ระบบจัดการสต๊อก</small></div>
  <nav class="nav">
@@ -40,11 +45,11 @@ dialog{border:1px solid #d6d9cf;border-radius:8px;padding:0;width:min(770px,calc
  <footer>ร่ำรวยดี · ปทุมธานี<br>บัญชีซื้อทองร้านส่ง</footer>
 </aside>
 <div class="work">
- <div class="topbar"><span>จัดซื้อ / ตัดซื้อทองร้านส่ง</span><span class="tag preview">ทดลองใช้งานบนเว็บ · 12 ต.ค. 2569</span></div>
+ <div class="topbar"><span>จัดซื้อ / ตัดซื้อทองร้านส่ง</span><button id="cloudLogout" type="button">ออกจากระบบ</button></div>
  <main class="main">
   <header class="heading"><div><h1>งานขาย · ล็อก · รับทอง</h1><p>ห้างทองร่ำรวยดี</p></div><div class="actions"><button id="print"><i data-lucide="printer"></i>พิมพ์ใบสรุป</button><button class="primary" id="newSale"><i data-lucide="plus"></i>เปิดงานใหม่</button></div></header>
   <div class="preview-actions"><span>ลองแบบกรอก</span><button type="button" id="previewLock"><i data-lucide="eye"></i>ดูช่องโทรล็อกทอง</button><button type="button" id="previewReceive"><i data-lucide="eye"></i>ดูช่องรับทองจริง</button></div>
-  <div class="notice" style="margin:0 0 20px" role="note"><strong>ข้อมูลแยกเฉพาะเบราว์เซอร์นี้ ยังไม่ซิงก์ข้ามเครื่องหรือเชื่อมสต๊อกเดิม</strong><br>การล้างข้อมูลเบราว์เซอร์อาจทำให้ข้อมูลหาย โปรดดาวน์โหลดข้อมูลสำรองหลังบันทึก และยังไม่ใช้เป็นบัญชีหลักของร้าน <button type="button" id="downloadBackup" style="margin-top:8px"><i data-lucide="download"></i>ดาวน์โหลดข้อมูลสำรอง</button></div>
+  <section style="margin:0 0 20px;border-block:1px solid var(--line);padding:12px 0"><p id="cloudStatus" role="status">รอเข้าสู่ระบบ</p><div class="actions" style="margin-top:10px"><button type="button" id="downloadCloud"><i data-lucide="download"></i>สำรองข้อมูลร่วม</button><label style="margin:0;align-self:center" for="importBackup">นำเข้าไฟล์สำรอง</label><input style="width:240px;max-width:100%" id="importBackup" type="file" accept=".json,application/json"></div><div id="legacyNotice" class="notice" hidden><p id="legacyCount"></p><div class="actions" style="margin-top:8px"><button type="button" id="downloadLegacy">สำรองข้อมูลเดิมในเครื่อง</button><button type="button" id="importLegacy">นำข้อมูลเดิมเข้าฐานข้อมูลร่วม</button></div></div><button id="downloadBackup" hidden type="button"></button></section>
   <div class="print-title"><h2>สรุปตัดซื้อทอง / ยอดคงค้างร้านส่ง</h2><p>ลูกค้า: ร่ำรวยดี (ปทุมธานี) · ระบบตัดซื้อรุ่นทดลอง</p><p id="printDate"></p></div>
   <div class="view-tabs" role="tablist" aria-label="มุมมอง"><button data-view="workflow" class="selected" aria-selected="true" role="tab"><i data-lucide="git-compare-arrows"></i>เทียบขาย / ล็อก / รับ</button><button data-view="statement" aria-selected="false" role="tab"><i data-lucide="file-spreadsheet"></i>บัญชีร้านส่งตามเอกสาร</button></div>
   <section id="workflowView">
@@ -163,15 +168,21 @@ try{
   records=saved.records;sales=saved.sales;
  }
 }catch(e){storageReadable=false;$('toast').textContent='อ่านข้อมูลเดิมไม่สำเร็จ ระบบระงับการบันทึกเพื่อป้องกันข้อมูลเดิมถูกทับ กรุณาดาวน์โหลดข้อมูลสำรอง';}
-function persist(next,nextSales=sales){
- if(fieldPreviewMode||!storageReadable)return false;
+let saveInProgress=false,saveError='';
+// The legacy localStorage key is read-only from this release onward.
+records=[];sales=[];
+window.addEventListener('purchase-cloud-state',event=>{records=event.detail.records;sales=event.detail.sales;render();});
+async function persist(next,nextSales=sales){
+ if(fieldPreviewMode||saveInProgress)return false;
+ saveError='';saveInProgress=true;
+ const buttons=[...document.querySelectorAll('button[type="submit"]')].map(button=>[button,button.disabled]);
+ buttons.forEach(([button])=>button.disabled=true);
  try{
-  if(localStorage.getItem(STORE)!==storageSnapshot){toast('มีข้อมูลเปลี่ยนจากอีกแท็บ กรุณาเปิดหน้าใหม่เพื่อตรวจสอบก่อนบันทึก');return false;}
-  const nextSnapshot=JSON.stringify({version:3,records:next,sales:nextSales});
-  if(storageSnapshot!==null)localStorage.setItem(STORE+'-previous',storageSnapshot);
-  localStorage.setItem(STORE,nextSnapshot);
-  storageSnapshot=nextSnapshot;records=next;sales=nextSales;return true;
- }catch(e){return false;}
+  if(!window.purchaseCloud)throw new Error('ยังไม่ได้เชื่อมฐานข้อมูลร่วม');
+  const saved=await window.purchaseCloud.save({records:next,sales:nextSales});
+  records=saved.records;sales=saved.sales;return true;
+ }catch(error){saveError=error.message;toast(saveError);return false;}
+ finally{saveInProgress=false;buttons.forEach(([button,disabled])=>button.disabled=disabled);}
 }
 $('downloadBackup').addEventListener('click',()=>{
  try{
@@ -220,7 +231,7 @@ function openPurchase(saleId=''){
  if(saleId)$('lockSale').value=saleId;
  resetSupplier();$('calcFormula').textContent='ราคาต่อบาท ÷ กรัมต่อบาท × น้ำหนักจริง + ค่าใช้จ่าย';syncLockSale();calculate();
 }
-$('purchaseForm').addEventListener('submit',e=>{
+$('purchaseForm').addEventListener('submit',async e=>{
  e.preventDefault();if(fieldPreviewMode)return;const old=records.find(r=>r.id===editingLockId),calc=calculate(),ref=$('buyRef').value.trim(),sale=sales.find(s=>s.id===(old?old.saleId:$('lockSale').value));
  if(editingLockId&&!old){$('buyError').textContent='ไม่พบใบล็อกเดิม กรุณาเปิดงานใหม่';return;}
  if((!sale&&!old)||!calc||!ref||!$('supplierName').value.trim()){$('buyError').textContent='กรุณาเลือกใบขาย และกรอกราคา น้ำหนัก เลขที่ตัดซื้อ และร้านส่งให้ครบ';return;}
@@ -240,7 +251,7 @@ $('purchaseForm').addEventListener('submit',e=>{
  const row={...old,id:old?.id||crypto.randomUUID(),ref,date,time,qty,type:$('goldType').value,item:$('buyItem').value,dayRate:Number($('buyDayRate').value),supplier:$('supplierName').value.trim(),saleId:old?old.saleId:sale?.id||null,...calc,due:$('dueDate').value,customer:sale?sale.ref+' · '+sale.customer:$('customerRef').value.trim(),note:$('buyNote').value.trim(),events:old?old.events:[]};
  if(old){const {events,revisions,...before}=old;row.updatedAt=new Date().toISOString();row.revisions=[...(revisions||[]),{at:row.updatedAt,before}];}
  if(!old&&$('paidNow').checked)row.events.push({id:crypto.randomUUID(),date,time,grams:0,money:row.total,ref:'จ่าย ณ เวลาตัดซื้อ'});
- if(!persist(old?records.map(r=>r.id===old.id?row:r):[...records,row])){$('buyError').textContent='บันทึกไม่สำเร็จ พื้นที่จัดเก็บไม่พร้อม กรุณาลองใหม่';return;}
+ if(!await persist(old?records.map(r=>r.id===old.id?row:r):[...records,row])){$('buyError').textContent=saveError||'กำลังบันทึก กรุณารอสักครู่';return;}
  resetLockEdit();render();refreshWork(row.id);scrollWork('jobLock');toast(old?'บันทึกการแก้ไขโทรล็อกแล้ว · ประวัติรับทองและชำระเงินเดิมยังอยู่':'บันทึกโทรล็อกแล้ว · ค้างรับทอง สามารถปิดงานแล้วกลับมารับทองภายหลัง');
 });
 function resetLockEdit(){editingLockId=null;$('buyError').textContent='';$('saveLock').textContent='บันทึกโทรล็อกทอง';$('cancelLockEdit').hidden=true;$('lockFormHeading').textContent='ข้อมูลการตัดซื้อ';$('lockSale').disabled=false;$('lockSale').required=true;$('paidNow').disabled=false;$('paidNow').closest('label').hidden=false;}
@@ -268,7 +279,7 @@ function openDetail(id){
  $('detailHistory').innerHTML=r.events.length?'<table><thead><tr><th>วันที่ / อ้างอิง</th><th>ทองที่รับจริง</th><th class="num">รับทอง (g)</th><th class="num">จ่ายเงิน (฿)</th></tr></thead><tbody>'+[...r.events].sort((a,b)=>((b.date||'')+b.time).localeCompare((a.date||'')+a.time)).map(e=>`<tr><td>${e.date?thaiDate(e.date)+' '+esc(e.time):'ไม่ระบุวันที่'}<small>${esc(e.ref)}</small></td><td>${e.grams?goldLabel(e.type||r.type)+' · '+esc(e.item||'ไม่ระบุชนิด'):'—'}<small>${e.qty?e.qty+' ชิ้น':''}${e.note?' · '+esc(e.note):''}</small></td><td class="num">${weight(e.grams/10000)}</td><td class="num">${money(e.money/100)}</td></tr>`).join('')+'</tbody></table>':'<p class="muted">ยังไม่มีการรับทองหรือชำระเงิน</p>';
  $('eventGrams').value=(b.g/10000).toFixed(4);$('eventReceiptRate').value=r.rate??'';$('eventReceiptBasis').value=r.basis||15.2;$('eventReceiptFee').value=(Math.round((r.fee||0)*b.g/r.g)/100).toFixed(2);invoiceManuallyEdited=false;calculateReceiptInvoice();
 }
-$('settlementForm').addEventListener('submit',e=>{
+$('settlementForm').addEventListener('submit',async e=>{
  e.preventDefault();const r=records.find(x=>x.id===selectedId);if(!r)return;const b=sums(r),g=units($('eventGrams').value),m=cents($('eventMoney').value);
  if(!Number.isSafeInteger(g)||!Number.isSafeInteger(m)||g<0||m<0||!(g||m)){$('settlementError').textContent='ระบุยอดรับทองหรือจ่ายเงินมากกว่า 0';return;}
  if(g>b.g&&!$('eventNote').value.trim()){$('settlementError').textContent='น้ำหนักรับเกินใบล็อก กรุณาระบุหมายเหตุเพื่อบันทึกยอดจริงและตั้งสถานะรอตรวจสอบ';return;}
@@ -283,7 +294,7 @@ $('settlementForm').addEventListener('submit',e=>{
  if(m>0&&sums({...r,events:[...r.events,event]}).credit>0){$('settlementError').textContent='ยอดจ่ายเกินยอดค้างชำระตามใบล็อกหรือใบรับจริง กรุณาตรวจสอบ';return;}
  if(!event.ref){$('settlementError').textContent='กรุณาระบุเอกสารอ้างอิง';return;}
  if(r.events.some(x=>x.ref.toLowerCase()===event.ref.toLowerCase()&&x.date===event.date&&x.grams===event.grams&&x.money===event.money)){$('settlementError').textContent='พบรายการรับ / จ่ายนี้แล้ว กรุณาตรวจสอบก่อนบันทึกซ้ำ';return;}
- if(!persist(records.map(x=>x.id===r.id?{...x,events:[...x.events,event]}:x))){$('settlementError').textContent='บันทึกไม่สำเร็จ กรุณาลองใหม่';return;}
+ if(!await persist(records.map(x=>x.id===r.id?{...x,events:[...x.events,event]}:x))){$('settlementError').textContent=saveError||'กำลังบันทึก กรุณารอสักครู่';return;}
  render();refreshWork(r.id);toast('บันทึกน้ำหนักและยอดเอกสารรับจริงในงานเดิมแล้ว');
 });
 $('print').addEventListener('click',()=>{if(!$('deliveryView').hidden){$('printDelivery').click();return;}if(!$('reportView').hidden){$('printProfit').click();return;}const workflow=!$('workflowView').hidden;$('printDate').textContent='พิมพ์: '+thaiDate(today())+' '+nowTime()+' น. · '+(workflow?'เทียบขาย / ล็อก / รับ · '+$('flowType').selectedOptions[0].textContent+' · '+$('flowStatus').selectedOptions[0].textContent+($('flowSearch').value?' · ค้นหา: '+$('flowSearch').value:''):'บัญชีร้านส่ง · '+(currentType==='all'?'ทองทั้งหมด':goldLabel(currentType))+' · '+$('statusFilter').selectedOptions[0].textContent);window.print();});
@@ -364,7 +375,7 @@ function openSale(id=null,purchaseId=null){
  else{addPiece({g:3000});addPiece({g:3000});$('saleRef').value=nextJobNumber($('saleDate').value).ref;}
  calcSale();workSaleId=s?.id||null;refreshWork();if(!$('workDialog').open)$('workDialog').showModal();scrollWork('jobSale');
 }
-$('saleForm').addEventListener('submit',e=>{
+$('saleForm').addEventListener('submit',async e=>{
  e.preventDefault();const number=editingSaleId?null:nextJobNumber($('saleDate').value);if(number)$('saleRef').value=number.ref;const calc=calcSale(),ref=$('saleRef').value.trim(),customer=$('saleCustomer').value.trim();
  if(!calc||!ref||!customer){$('saleError').textContent='กรุณากรอกข้อมูล น้ำหนัก และราคาให้ครบ';return;}
  if(sales.some(s=>s.id!==editingSaleId&&s.ref.toLowerCase()===ref.toLowerCase())){$('saleError').textContent='เลขที่ใบขายนี้มีอยู่แล้ว';return;}
@@ -372,11 +383,11 @@ $('saleForm').addEventListener('submit',e=>{
  if(calc.g<locked||calc.qty<locks.reduce((n,r)=>n+(r.qty||0),0)||locks.some(r=>date+time>r.date+r.time)){$('saleError').textContent='จำนวนชิ้นและน้ำหนักขายต้องไม่น้อยกว่าที่ล็อกแล้ว และวันเวลาขายต้องไม่หลังโทรล็อกทอง';return;}
  const sale={...old,...(number?{jobSequence:number.sequence,sequenceMonth:number.month}:{}),id:old?.id||crypto.randomUUID(),ref,customer,date,time,type,item:$('saleItem').value,product:$('saleProduct').value.trim(),note:$('saleNote').value.trim(),...calc};
  const nextSales=old?sales.map(s=>s.id===old.id?sale:s):[...sales,sale],nextRecords=records.map(r=>r.id===attachingPurchaseId?{...r,saleId:sale.id}:r);
- if(!persist(nextRecords,nextSales)){$('saleError').textContent='บันทึกไม่สำเร็จ กรุณาลองใหม่';return;}
+ if(!await persist(nextRecords,nextSales)){$('saleError').textContent=saveError||'กำลังบันทึก กรุณารอสักครู่';return;}
  workSaleId=sale.id;editingSaleId=sale.id;attachingPurchaseId=null;render();refreshWork();scrollWork('jobLock');toast('บันทึกขายแล้ว กรอกล็อกทองต่อในงานนี้ได้เลย');
 });
 function openLink(id){linkingPurchaseId=id;const r=records.find(x=>x.id===id);if(!r)return;$('linkContext').textContent=r.ref+' · '+goldLabel(r.type)+' · '+weight(r.g/10000)+' กรัม · ล็อก '+thaiDate(r.date)+' '+r.time+' น.';const options=sales.filter(s=>s.type===r.type&&saleBalance(s).toLock>=r.g&&s.date+s.time<=r.date+r.time);$('linkSale').innerHTML='<option value="">เลือกใบขาย</option>'+options.map(s=>`<option value="${esc(s.id)}">${esc(s.ref)} · ${esc(s.customer)} · ยังต้องล็อก ${weight(saleBalance(s).toLock/10000)} กรัม</option>`).join('');$('linkError').textContent=options.length?'':'ยังไม่มีใบขายที่ตรงประเภท น้ำหนัก และวันเวลา กรุณากรอกข้อมูลขายก่อน';$('linkDialog').showModal();}
-$('linkForm').addEventListener('submit',e=>{e.preventDefault();const r=records.find(x=>x.id===linkingPurchaseId),s=sales.find(x=>x.id===$('linkSale').value);if(!r||r.saleId||!s||s.type!==r.type||saleBalance(s).toLock<r.g||s.date+s.time>r.date+r.time){$('linkError').textContent='รายการไม่ตรงกัน กรุณาตรวจสอบใบขายและใบล็อก';return;}if(!persist(records.map(x=>x.id===r.id?{...x,saleId:s.id}:x))){$('linkError').textContent='บันทึกไม่สำเร็จ';return;}$('linkDialog').close();render();toast('เชื่อมใบขายกับใบล็อกแล้ว');});
+$('linkForm').addEventListener('submit',async e=>{e.preventDefault();const r=records.find(x=>x.id===linkingPurchaseId),s=sales.find(x=>x.id===$('linkSale').value);if(!r||r.saleId||!s||s.type!==r.type||saleBalance(s).toLock<r.g||s.date+s.time>r.date+r.time){$('linkError').textContent='รายการไม่ตรงกัน กรุณาตรวจสอบใบขายและใบล็อก';return;}if(!await persist(records.map(x=>x.id===r.id?{...x,saleId:s.id}:x))){$('linkError').textContent=saveError||'กำลังบันทึก กรุณารอสักครู่';return;}$('linkDialog').close();render();toast('เชื่อมใบขายกับใบล็อกแล้ว');});
 $('settlementError').insertAdjacentHTML('beforebegin','<div class="form-grid receipt-fields"><div><label for="eventType">ประเภททองที่รับจริง</label><select id="eventType"><option value="jewelry">ทองรูปพรรณ 96.5%</option><option value="bar">ทองแท่ง 96.5%</option></select></div><div><label for="eventItem">ชนิดทองที่รับจริง</label><select id="eventItem"></select></div><div><label for="eventQty">จำนวนที่รับจริง (ชิ้น)</label><input id="eventQty" type="number" min="1" step="1" value="1"></div><div><label for="eventNote">ชื่อสินค้า / ลาย / หมายเหตุรับทอง</label><input id="eventNote" maxlength="200" placeholder="รายละเอียดทองที่ได้รับ"></div></div>');
 $('eventType').addEventListener('change',()=>setItems('eventItem',$('eventType').value));
 $('eventDate').previousElementSibling.textContent='วันที่รับทอง / ชำระเงิน';
@@ -562,8 +573,7 @@ $('printDelivery').addEventListener('click',()=>{$('printDate').textContent='ส
 $('previewLock').addEventListener('click',()=>openFieldPreview('jobLock'));
 $('previewReceive').addEventListener('click',()=>openFieldPreview('jobReceive'));
 render();if(window.lucide)lucide.createIcons();
-if(location.hash==='#preview-lock')openFieldPreview('jobLock');
-else if(location.hash==='#preview-receive')openFieldPreview('jobReceive');
 </script>
+<script type="module" src="purchase-cloud.js"></script>
 </body>
 </html>

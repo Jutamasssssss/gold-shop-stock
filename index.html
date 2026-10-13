@@ -195,6 +195,7 @@
   /* Login overlay */
   .login-overlay { display:none; position:fixed; inset:0; background:rgba(26,26,24,0.96); z-index:200; align-items:center; justify-content:center; flex-direction:column; }
   .login-overlay.open { display:flex; }
+  body[data-cloud-locked="true"] .sidebar,body[data-cloud-locked="true"] main{visibility:hidden}
   .login-box { background:var(--surface); border-radius:20px; padding:40px; width:360px; max-width:95vw; text-align:center; }
   .login-box h2 { font-size:22px; font-weight:700; color:var(--gold); margin-bottom:4px; }
   .login-box p { font-size:13px; color:var(--text3); margin-bottom:24px; }
@@ -359,7 +360,7 @@
     #spotStatus { grid-column:1/-1; margin-top:0 !important; }
     nav { display:flex; overflow-x:auto; padding:0; scrollbar-width:none; border-top:1px solid rgba(255,255,255,0.06); }
     nav::-webkit-scrollbar { display:none; }
-    .nav-item { flex:0 0 auto; padding:9px 13px; border-left:none; border-bottom:3px solid transparent; font-size:12px; }
+    .nav-item { flex:0 0 auto; white-space:nowrap; padding:9px 13px; border-left:none; border-bottom:3px solid transparent; font-size:12px; }
     .nav-item.active { border-left:none; border-bottom-color:var(--gold); }
     .nav-icon { width:auto; }
     .main { min-height:calc(100vh - 140px); overflow:visible; }
@@ -418,11 +419,11 @@
     </div>
     <div class="form-group">
       <label>รหัสผ่าน</label>
-      <input type="password" id="loginPass" placeholder="รหัสผ่าน" value="1234" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="password" id="loginPass" placeholder="รหัสผ่านบัญชีร้าน" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div id="loginErr" style="color:var(--red);font-size:13px;margin-bottom:10px;display:none;">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">เข้าสู่ระบบ</button>
-    <div style="margin-top:16px;font-size:11px;color:var(--text3);">Demo: admin/1234 · cashier/1234 · viewer/1234</div>
+    <div id="shopConnection" role="status" style="margin-top:16px;font-size:12px;">รอเข้าสู่ระบบฐานข้อมูลร้าน</div>
   </div>
 </div>
 
@@ -504,7 +505,7 @@
       <div class="nav-item" onclick="showPage('stock')">
         <span class="nav-icon">▦</span> สต็อกสินค้า
       </div>
-      <a class="nav-item" href="purchase.html" style="text-decoration:none" aria-label="ตัดซื้อทองร้านส่ง ทดลองใช้งาน"><span class="nav-icon">&#9743;</span> ตัดซื้อทองร้านส่ง</a>
+      <a class="nav-item" href="purchase.html" style="text-decoration:none" aria-label="ตัดซื้อทองร้านส่ง"><span class="nav-icon">&#9743;</span> ตัดซื้อทองร้านส่ง</a>
       <div class="nav-item" onclick="showPage('trays')">
         <span class="nav-icon">⊞</span> แผนถาด
       </div>
@@ -543,6 +544,7 @@
 
   <!-- Main -->
   <main class="main">
+    <div id="sharedStatus" role="status" style="font-size:12px;padding:8px 0 16px">รอเชื่อมต่อฐานข้อมูลร้าน</div>
 
     <!-- Dashboard -->
     <div class="page active" id="page-dashboard">
@@ -1507,70 +1509,7 @@
   </div>
 </div>
 
-<script type="module">
-// ============================================================
-// FIREBASE SETUP — ใส่ config ของคุณตรงนี้ (เปลี่ยนแค่ค่าใน {} นี้)
-// ============================================================
-const firebaseConfig = {
-  apiKey: "AIzaSyBvSzkwvetsGtthnNljRZGMnlUC3pzfhXs",
-  authDomain: "gold-shop-acf19.firebaseapp.com",
-  projectId: "gold-shop-acf19",
-  storageBucket: "gold-shop-acf19.firebasestorage.app",
-  messagingSenderId: "10469108848",
-  appId: "1:10469108848:web:c6bcefb2444ce4d55458b5"
-};
-// ============================================================
-
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-import {
-  getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, runTransaction
-} from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-
-const fbApp = initializeApp(firebaseConfig);
-const fbDb = getFirestore(fbApp);
-
-// ทำให้ไฟล์ส่วนล่าง (script ปกติ) เรียกใช้ได้
-const remoteFirebase = {
-  saveDoc: async (col, id, data) => {
-    try { await setDoc(doc(fbDb, col, String(id)), data); }
-    catch(e) { console.error('Save failed:', e); alert('บันทึกไม่สำเร็จ — ตรวจ internet'); throw e; }
-  },
-  deleteDoc: async (col, id) => {
-    try { await deleteDoc(doc(fbDb, col, String(id))); }
-    catch(e) { console.error('Delete failed:', e); }
-  },
-  listen: (col, callback) => {
-    return onSnapshot(collection(fbDb, col), (snap) => {
-      const items = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
-      callback(items);
-    });
-  },
-  listenDoc: (col, id, callback) => {
-    return onSnapshot(doc(fbDb, col, String(id)), (snap) => {
-      callback(snap.exists() ? { ...snap.data(), _docId: snap.id } : null);
-    });
-  },
-  nextSequence: async (key, minimum=0) => {
-    const ref = doc(fbDb, 'settings', 'counters');
-    return runTransaction(fbDb, async (tx) => {
-      const snap = await tx.get(ref);
-      const current = Number(snap.exists() ? snap.data()[key] : 0) || 0;
-      const next = Math.max(current, Number(minimum) || 0) + 1;
-      tx.set(ref, { [key]: next, updatedAt: new Date().toISOString() }, { merge:true });
-      return next;
-    });
-  }
-};
-const qaMode = new URLSearchParams(location.search).get('qa') === '1' && ['localhost','127.0.0.1'].includes(location.hostname);
-window._fb = qaMode ? {
-  saveDoc: async () => {},
-  deleteDoc: async () => {},
-  listen: (_col, callback) => { setTimeout(() => callback([]), 0); return () => {}; },
-  listenDoc: (_col, _id, callback) => { setTimeout(() => callback(null), 0); return () => {}; },
-  nextSequence: async (_key, minimum=0) => Number(minimum || 0) + 1
-} : remoteFirebase;
-window._fbReady = true;
-</script>
+<script type="module" src="shop-cloud.js"></script>
 
 <script>
 // ============ STATE ============
@@ -1609,6 +1548,7 @@ function can(action) {
 }
 
 function requirePerm(action, msg) {
+  if(!window._fbReady||!cloudInitialSyncReady()||!navigator.onLine||lastSaveStatus==='error'){showToast('รอข้อมูลกลางให้ครบก่อนทำรายการ หากบันทึกผิดพลาดให้สำรองข้อมูลก่อนเปิดหน้าใหม่','error');return false;}
   if (!can(action)) {
     showToast(`⛔ ${msg || 'คุณไม่มีสิทธิ์ทำรายการนี้'} (Role: ${currentUser?.role || '—'})`, 'error');
     return false;
@@ -1633,49 +1573,51 @@ function showToast(msg, type='info') {
 }
 
 // ============ USERS ============
-const USERS = [
-  { username:'admin',   password:'1234', name:'ผู้จัดการ',   role:'admin',   icon:'👑' },
-  { username:'cashier', password:'1234', name:'แคชเชียร์',   role:'cashier', icon:'💁' },
-  { username:'viewer',  password:'1234', name:'ผู้สังเกตการณ์', role:'viewer', icon:'👁️' },
-];
-
-function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  const user = USERS.find(x => x.username===u && x.password===p);
-  if (!user) { document.getElementById('loginErr').style.display='block'; return; }
-  currentUser = user;
-  localStorage.setItem('gd_session', JSON.stringify(user));
-  document.getElementById('loginOverlay').classList.remove('open');
-  document.getElementById('sidebarUserName').textContent = user.name;
-  document.getElementById('sidebarRoleBadge').textContent = user.role==='admin'?'Admin':user.role==='cashier'?'Cashier':'View';
-  document.getElementById('sidebarUserIcon').textContent = user.icon;
-  applyRoleUI();
-}
-
-function showLogout() {
-  if (confirm('ออกจากระบบ?')) {
-    currentUser = null;
-    localStorage.removeItem('gd_session');
-    document.getElementById('loginUser').value='';
+async function doLogin() {
+  const error=document.getElementById('loginErr');
+  error.style.display='none';
+  try {
+    if(!window.shopLogin)throw Error('ระบบล็อกอินยังโหลดไม่เสร็จ กรุณาตรวจสอบอินเทอร์เน็ต');
+    await window.shopLogin(document.getElementById('loginUser').value.trim(),document.getElementById('loginPass').value);
     document.getElementById('loginPass').value='';
-    document.getElementById('loginErr').style.display='none';
-    document.getElementById('loginOverlay').classList.add('open');
-  }
+  } catch(e){error.textContent='เข้าสู่ระบบไม่สำเร็จ ตรวจสอบชื่อผู้ใช้ รหัสผ่าน และอินเทอร์เน็ต';error.style.display='block';}
 }
-
+async function showLogout() {
+  if(remoteSavePending||remoteSaveTimer){showToast('กรุณารอการบันทึกให้เสร็จก่อน','error');return;}
+  if(confirm('ออกจากระบบ?'))await window.shopLogout();
+}
 function checkSession() {
-  const saved = localStorage.getItem('gd_session');
-  if (saved) {
-    currentUser = JSON.parse(saved);
-    document.getElementById('loginOverlay').classList.remove('open');
-    document.getElementById('sidebarUserName').textContent = currentUser.name;
-    document.getElementById('sidebarRoleBadge').textContent = currentUser.role==='admin'?'Admin':currentUser.role==='cashier'?'Cashier':'View';
-    document.getElementById('sidebarUserIcon').textContent = currentUser.icon;
-    applyRoleUI();
-  }
+  document.getElementById('loginOverlay').classList.add('open');
 }
-
+window.shopCollectionReady=col=>remoteCollectionsReady.has(col)||col==='settings';
+window.shopHasPendingWork=()=>!!document.querySelector('.modal-overlay.open')||!!remoteSaveTimer||remoteSavePending>0||lastSaveStatus==='error';
+window.shopCloudStatus=(text,error=false)=>{
+  if(error)lastSaveStatus='error';
+  const status=document.getElementById('sharedStatus');
+  if(status){status.textContent=text;status.style.color=error?'var(--red)':'var(--text3)';}
+};
+window.onShopAuth=user=>{
+  clearTimeout(remoteSaveTimer);remoteSaveTimer=null;remoteCollectionsReady.clear();
+  Object.values(remoteShadow).forEach(map=>map.clear());
+  products=[];transactions=[];pawns=[];savingsAccounts=[];savingsPaymentLedger=[];installmentContracts=[];customers=[];
+  currentUser=user?{username:'admin',name:'ผู้จัดการ',role:'admin',icon:'👑'}:null;
+  document.body.dataset.cloudLocked=user?'false':'true';
+  document.getElementById('loginOverlay').classList.toggle('open',!user);
+  document.querySelectorAll('.modal-overlay.open').forEach(el=>el.classList.remove('open'));
+  if(!user){renderDashboard();return;}
+  try {
+    if(!localStorage.getItem('gd_before_shared_auth_v1')){
+      const backup={at:new Date().toISOString(),data:{}};
+      ['gd_products','gd_transactions','gd_pawns','gd_savings','gd_installments','gd_customers','shop_settings'].forEach(key=>backup.data[key]=localStorage.getItem(key));
+      localStorage.setItem('gd_before_shared_auth_v1',JSON.stringify(backup));
+    }
+  }catch(e){showToast('สร้างสำรองในเครื่องไม่ได้ ระบบยังไม่โหลดหรือเปลี่ยนข้อมูล','error');return;}
+  lastSaveStatus='';document.getElementById('sidebarUserName').textContent=currentUser.name;
+  document.getElementById('sidebarRoleBadge').textContent='Admin';
+  document.getElementById('sidebarUserIcon').textContent=currentUser.icon;
+  applyRoleUI();window.shopCloudStatus('กำลังโหลดข้อมูลกลางของร้าน…');
+  setupRealtimeSync();
+};
 function applyRoleUI() {
   const role = currentUser?.role || 'viewer';
   // ซ่อน/แสดง nav items
@@ -1748,7 +1690,8 @@ function cloudInitialSyncReady() {
 function acceptRemoteSnapshot(col) {
   const isInitial = !remoteCollectionsReady.has(col);
   if (isInitial) remoteCollectionsReady.add(col);
-  return isInitial || !shouldIgnoreRemoteSnapshot();
+  if(cloudInitialSyncReady())window.shopCloudStatus?.('ข้อมูลทุกเมนูเชื่อมฐานข้อมูลกลางแล้ว');
+  return true;
 }
 
 function cloneData(data) {
@@ -2026,48 +1969,9 @@ function scheduleSavingsLedgerMigration() {
 }
 
 function mergeRemoteWithLocal(col, localItems, remoteItems, idField) {
-  const localMap = new Map();
-  localItems.forEach((item, i) => {
-    const id = getCollectionItemId(item, idField, i);
-    if (!item?._deleted) localMap.set(id, item);
-  });
-
-  const remoteDeletedIds = new Set((remoteItems || [])
-    .filter(item => item?._deleted)
-    .map((item, i) => getCollectionItemId(item, idField, i)));
-  const activeRemoteItems = (remoteItems || []).filter(item => !item?._deleted);
-  let keptLocalNewer = false;
-  const merged = activeRemoteItems.map((remoteItem, i) => {
-    const id = getCollectionItemId(remoteItem, idField, i);
-    const localItem = localMap.get(id);
-    if (col === 'savings' && localItem) {
-      const combined = mergeSavingsAccountDocs(localItem, remoteItem);
-      if (stableJson(combined) !== stableJson(remoteItem)) keptLocalNewer = true;
-      return combined;
-    }
-    if (localItem && getDocTime(localItem) > getDocTime(remoteItem)) {
-      keptLocalNewer = true;
-      return localItem;
-    }
-    return remoteItem;
-  });
-
-  localMap.forEach((localItem, id) => {
-    if (remoteDeletedIds.has(id)) return;
-    const existsRemote = activeRemoteItems.some((remoteItem, i) => {
-      const remoteId = getCollectionItemId(remoteItem, idField, i);
-      return remoteId === id;
-    });
-    if (!existsRemote && getDocTime(localItem) > 0) {
-      keptLocalNewer = true;
-      merged.push(col === 'savings' ? normalizeSavingsAccount(localItem) : localItem);
-    }
-  });
-
-  if (keptLocalNewer) setTimeout(queueRemoteSave, 300);
-  return merged;
+  // Preserve the browser's original data in a separate backup, not a silent cloud merge.
+  return (remoteItems||[]).filter(item=>!item?._deleted);
 }
-
 function saveLocalCache() {
   localStorage.setItem('gd_products', JSON.stringify(products));
   localStorage.setItem('gd_transactions', JSON.stringify(transactions));
@@ -2109,6 +2013,7 @@ function loadLocalCache() {
 function setSaveStatus(status, type='info') {
   if (status === lastSaveStatus) return;
   lastSaveStatus = status;
+  window.shopCloudStatus?.(status==='saving'?'กำลังบันทึกลงฐานข้อมูลกลาง…':status==='saved'?'บันทึกลงฐานข้อมูลกลางแล้ว':'บันทึกไม่สำเร็จ ข้อมูลที่แก้ยังอยู่ในเครื่อง กรุณาสำรองก่อนเปิดใหม่',status==='error');
   if (status === 'error') showToast('บันทึกขึ้นเว็บไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ต', type);
 }
 
@@ -2119,7 +2024,7 @@ async function pushSnapshotToCloud(snapshot) {
     if (!id) return;
     const hash = stableJson(doc);
     if (remoteShadow[col].get(String(id)) === hash) return;
-    jobs.push(window._fb.saveDoc(col, id, doc));
+    jobs.push({col,id,data:doc});
     saved.push({ col, id: String(id), hash });
   }
   snapshot.customers.forEach(c => addChanged('customers', c.id, c));
@@ -2130,7 +2035,7 @@ async function pushSnapshotToCloud(snapshot) {
   snapshot.transactions.forEach(t => addChanged('transactions', t._docId, t));
   snapshot.products.forEach(p => addChanged('products', p.id || p.code, p));
   if (!jobs.length) return 0;
-  await Promise.all(jobs);
+  await window._fb.saveMany(jobs);
   saved.forEach(item => remoteShadow[item.col].set(item.id, item.hash));
   return jobs.length;
 }
@@ -2201,9 +2106,9 @@ async function persistSavingsAccountNow(account) {
   if (!accountId) return false;
   const accountSnapshot = cloneData(account);
   const ledgerDocs = buildSavingsPaymentLedger([accountSnapshot]);
-  await Promise.all([
-    window._fb.saveDoc('savings', accountId, accountSnapshot),
-    ...ledgerDocs.map(item => window._fb.saveDoc('savingsPayments', item._docId, item))
+  await window._fb.saveMany([
+    {col:'savings',id:accountId,data:accountSnapshot},
+    ...ledgerDocs.map(item=>({col:'savingsPayments',id:item._docId,data:item}))
   ]);
   remoteShadow.savings.set(accountId, stableJson(accountSnapshot));
   ledgerDocs.forEach(item => remoteShadow.savingsPayments.set(String(item._docId), stableJson(item)));
@@ -2219,7 +2124,7 @@ function setupRealtimeSync() {
 
   window._fb.listen('products', (items) => {
     if (!acceptRemoteSnapshot('products')) return;
-    const cleanedItems = dedupeRemoteProducts(items);
+    const cleanedItems = items;
     const merged = mergeRemoteWithLocal('products', products, cleanedItems, 'code');
     rememberRemoteCollection('products', cleanedItems, 'code');
     products = merged;
@@ -2237,6 +2142,7 @@ function setupRealtimeSync() {
     normalizeAppCollections();
     saveLocalCache();
     if (typeof renderHistory === 'function') renderHistory();
+    renderDashboard();
   });
 
   window._fb.listen('pawns', (items) => {
@@ -2258,7 +2164,7 @@ function setupRealtimeSync() {
     normalizeAppCollections();
     saveLocalCache();
     if (typeof renderSavings === 'function') renderSavings();
-    scheduleSavingsLedgerMigration();
+    // No automatic ledger migration on login.
   });
 
   window._fb.listen('savingsPayments', (items) => {
@@ -2269,7 +2175,7 @@ function setupRealtimeSync() {
     normalizeAppCollections();
     saveLocalCache();
     if (typeof renderSavings === 'function') renderSavings();
-    scheduleSavingsLedgerMigration();
+    // Existing savings records remain unchanged until an explicit save.
   });
 
   window._fb.listen('installments', (items) => {
@@ -2303,12 +2209,14 @@ function setupRealtimeSync() {
   });
 
   console.log('Real-time sync activated');
+  window._fb.listenDoc('settings','shop',data=>{
+    if(data){const {_docId,...settings}=data;localStorage.setItem('shop_settings',JSON.stringify(settings));applyShopSettings();if(document.getElementById('page-settings').classList.contains('active'))renderSettings();}
+  });
 }
 
 // เริ่ม sync เมื่อหน้าโหลดเสร็จ
 window.addEventListener('load', () => {
-  setTimeout(setupRealtimeSync, 1000);
-  setTimeout(fetchSpot, 500);
+  // Authentication starts all shared listeners; no writes before login.
   setTimeout(applyShopSettings, 100);
   setTimeout(checkAutoBackupReminder, 5000);
 });
@@ -2354,12 +2262,13 @@ function getShopSettings() {
   };
 }
 
-function saveShopSettings(s) {
-  localStorage.setItem('shop_settings', JSON.stringify(s));
-  applyShopSettings();
-  if (window._fbReady) {
-    window._fb.saveDoc('settings', 'shop', s);
-  }
+async function saveShopSettings(s) {
+  if(!requirePerm('editProduct','ไม่มีสิทธิ์แก้ไขการตั้งค่าร้าน'))return false;
+  try {
+    await window._fb.saveDoc('settings', 'shop', s);
+    localStorage.setItem('shop_settings', JSON.stringify(s));
+    applyShopSettings();return true;
+  }catch(error){showToast(error.message,'error');return false;}
 }
 
 function applyShopSettings() {
@@ -2384,7 +2293,7 @@ function handleLogoUpload(e) {
   const reader = new FileReader();
   reader.onload = (ev) => {
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
       // Resize ให้เป็น 128x128 max
       const canvas = document.createElement('canvas');
       const max = 128;
@@ -2397,7 +2306,7 @@ function handleLogoUpload(e) {
 
       const s = getShopSettings();
       s.logoImage = dataUrl;
-      saveShopSettings(s);
+      if(!await saveShopSettings(s))return;
       renderSettings();
       alert('✅ อัพโหลดโลโก้สำเร็จ');
     };
@@ -2406,11 +2315,11 @@ function handleLogoUpload(e) {
   reader.readAsDataURL(file);
 }
 
-function removeLogoImage() {
+async function removeLogoImage() {
   if (!confirm('ลบรูปโลโก้ออก?')) return;
   const s = getShopSettings();
   s.logoImage = '';
-  saveShopSettings(s);
+  if(!await saveShopSettings(s))return;
   renderSettings();
 }
 
@@ -2477,6 +2386,7 @@ function renderSettings() {
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
         <button class="btn btn-primary" onclick="downloadBackup()">📥 ดาวน์โหลด Backup</button>
+        <button class="btn" onclick="downloadLocalRecovery()">ดาวน์โหลดสำเนาก่อนเชื่อมระบบ / งานส่งไม่สำเร็จ</button>
         <button class="btn" onclick="document.getElementById('restoreFile').click()">📤 Restore จากไฟล์</button>
         <input type="file" id="restoreFile" accept=".json" style="display:none;" onchange="restoreBackup(event)">
       </div>
@@ -2516,15 +2426,26 @@ function renderSettings() {
   updateBackupStats();
 }
 
-function doSaveShopSettings() {
+async function doSaveShopSettings() {
   const s = {
+    ...getShopSettings(),
     name: document.getElementById('setShopName').value.trim() || 'ห้างทอง',
     logo: document.getElementById('setShopLogo').value.trim() || '◈',
     phone: document.getElementById('setShopPhone').value.trim(),
     address: document.getElementById('setShopAddress').value.trim()
   };
-  saveShopSettings(s);
+  if(!await saveShopSettings(s))return;
   alert('✅ บันทึกการตั้งค่าเรียบร้อย');
+}
+
+function downloadLocalRecovery() {
+  const snapshots={};
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(key==='gd_before_shared_auth_v1'||key.startsWith('gd_unsent_'))snapshots[key]=JSON.parse(localStorage.getItem(key));
+  }
+  const url=URL.createObjectURL(new Blob([JSON.stringify(snapshots,null,2)],{type:'application/json'}));
+  const link=document.createElement('a');link.href=url;link.download='gold-shop-local-recovery.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 function updateBackupStats() {
@@ -2645,21 +2566,23 @@ function applySpotPrice(value, dateText='', timeText='', updatedAt='') {
   return true;
 }
 
-function updateSpot() {
+async function updateSpot() {
+  if(!requirePerm('editProduct','ไม่มีสิทธิ์แก้ไขราคาทอง'))return;
   const value = parseFloat(document.getElementById('spotInput').value);
   if (!Number.isFinite(value) || value <= 0) {
     showToast('กรุณากรอกราคาทองที่มากกว่า 0 บาท', 'error');
     document.getElementById('spotInput').value = spot;
     return;
   }
-  applySpotPrice(value, 'กำหนดเอง', '', new Date().toISOString());
-  if (window._fbReady) {
-    window._fb.saveDoc('settings', 'spot', {
-      value: spot,
-      updatedAt: spotUpdatedAt,
+  const updatedAt=new Date().toISOString();
+  try {
+    await window._fb.saveDoc('settings', 'spot', {
+      value,
+      updatedAt,
       source: 'manual'
     });
-  }
+    applySpotPrice(value, 'กำหนดเอง', '', updatedAt);
+  }catch(error){showToast(error.message,'error');}
 }
 
 async function fetchSpot() {
@@ -5661,7 +5584,7 @@ function closeSavings(id) {
 }
 
 // ============ INIT ============
-loadLocalCache();
+document.body.dataset.cloudLocked='true';
 checkSession();
 renderDashboard();
 initReportDates();
