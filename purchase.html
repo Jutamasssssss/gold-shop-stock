@@ -104,7 +104,7 @@ dialog{border:1px solid #d6d9cf;border-radius:8px;padding:0;width:min(770px,calc
    <div class="form-grid">
     <div><label for="buyDate">วันที่โทรล็อกทอง</label><input id="buyDate" type="date" required></div><div><label for="buyTime">เวลาที่โทรล็อก</label><input id="buyTime" type="time" required></div>
     <div><label for="buyRef">เลขที่ใบตัดซื้อร้านส่ง</label><input id="buyRef" required maxlength="60" placeholder="เช่น TR261001624"></div><div><label for="customerRef">อ้างอิงใบขาย / ลูกค้า (ถ้ามี)</label><input id="customerRef" maxlength="100" placeholder="เลขที่ใบขายหรือชื่อลูกค้า"></div>
-    <div><label for="goldType">ประเภททอง</label><select id="goldType"><option value="jewelry">ทองรูปพรรณ 96.5%</option><option value="bar">ทองแท่ง 96.5%</option></select></div><div><label for="dueDate">กำหนดเคลียร์ (ถ้ามี)</label><input id="dueDate" type="date"></div>
+    <div><label for="goldType">ประเภททองที่โทรล็อก</label><select id="goldType"><option value="jewelry">ทองรูปพรรณ 96.5%</option><option value="bar">ทองแท่ง 96.5%</option></select></div><div><label for="dueDate">กำหนดเคลียร์ (ถ้ามี)</label><input id="dueDate" type="date"></div>
    </div>
    <h3 class="form-section">ราคาที่ตกลงกับร้านส่ง</h3>
    <div class="form-grid">
@@ -222,7 +222,8 @@ $('purchaseForm').addEventListener('submit',e=>{
  if(records.some(r=>r.ref.toLowerCase()===ref.toLowerCase())){$('buyError').textContent='เลขที่ตัดซื้อนี้มีอยู่แล้ว กรุณาตรวจสอบเพื่อไม่บันทึกซ้ำ';return;}
  const date=$('buyDate').value,time=$('buyTime').value;
  if($('dueDate').value&&$('dueDate').value<date){$('buyError').textContent='วันกำหนดเคลียร์ต้องไม่ก่อนวันตัดซื้อ';return;}
- if(sale&&(calc.g>saleBalance(sale).toLock||(date+time)<(sale.date+sale.time)||$('goldType').value!==sale.type)){$('buyError').textContent='ตรวจสอบน้ำหนักที่ยังต้องล็อก ประเภททอง และวันเวลาซึ่งต้องไม่ก่อนขายลูกค้า';return;}
+ if(sale&&(calc.g>saleBalance(sale).toLock||(date+time)<(sale.date+sale.time))){$('buyError').textContent='ตรวจสอบน้ำหนักที่ยังต้องล็อก และวันเวลาซึ่งต้องไม่ก่อนขายลูกค้า';return;}
+ if(!ITEMS[$('goldType').value]?.includes($('buyItem').value)){$('buyError').textContent='กรุณาเลือกชนิดทองให้ตรงกับประเภทที่โทรล็อก';return;}
  const qty=Number($('buyQty').value),quantity=saleBalance(sale);
  if(!Number.isSafeInteger(qty)||qty<=0||(quantity.qtyKnown&&qty>quantity.toLockQty)){$('buyError').textContent='จำนวนชิ้นที่ล็อกต้องเป็นจำนวนเต็มมากกว่า 0 และไม่เกินจำนวนที่ยังต้องล็อก';return;}
  const row={id:crypto.randomUUID(),ref,date,time,qty,type:$('goldType').value,item:$('buyItem').value,dayRate:Number($('buyDayRate').value),supplier:$('supplierName').value.trim(),saleId:sale?.id||null,...calc,due:$('dueDate').value,customer:sale?sale.ref+' · '+sale.customer:$('customerRef').value.trim(),note:$('buyNote').value.trim(),events:[]};
@@ -261,10 +262,18 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
 document.querySelectorAll('[data-type]').forEach(b=>b.addEventListener('click',()=>{currentType=b.dataset.type;document.querySelectorAll('[data-type]').forEach(t=>{t.classList.toggle('selected',t===b);t.setAttribute('aria-selected',String(t===b));});render();}));
 ['search','statusFilter','dateFrom','dateTo'].forEach(id=>$(id).addEventListener('input',render));
 ['buyRate','gramsPerBaht','buyWeight','buyFee'].forEach(id=>$(id).addEventListener('input',calculate));
-$('goldType').addEventListener('change',()=>{$('gramsPerBaht').value=$('goldType').value==='bar'?'15.244':'15.2';setItems('buyItem',$('goldType').value);calculate();});
+$('goldType').addEventListener('change',()=>{$('gramsPerBaht').value=$('goldType').value==='bar'?'15.244':'15.2';setItems('buyItem',$('goldType').value,$('goldType').value==='bar'?'ทองแท่ง':'');calculate();});
+$('buyItem').addEventListener('change',()=>{
+ const type=Object.keys(ITEMS).find(key=>ITEMS[key].includes($('buyItem').value));
+ if(type&&type!==$('goldType').value){$('goldType').value=type;$('gramsPerBaht').value=type==='bar'?'15.244':'15.2';calculate();}
+});
 $('rows').addEventListener('click',e=>{const b=e.target.closest('[data-detail]');if(b)openWorkForLock(b.dataset.detail);});
 const ITEMS={jewelry:['สร้อยคอ','สร้อยข้อมือ','แหวน','กำไล','ต่างหู','จี้','รูปพรรณอื่น ๆ'],bar:['ทองแท่ง','ทองแผ่น','ทองเม็ด']};
-function setItems(id,type,selected=''){$(id).innerHTML='<option value="">เลือกชนิดทอง</option>'+ITEMS[type].map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');if(ITEMS[type].includes(selected))$(id).value=selected;}
+function setItems(id,type,selected=''){
+ const options=key=>ITEMS[key].map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+ $(id).innerHTML='<option value="">เลือกชนิดทอง</option>'+(id==='buyItem'?Object.keys(ITEMS).map(key=>`<optgroup label="${goldLabel(key)} 96.5%">${options(key)}</optgroup>`).join(''):options(type));
+ if(ITEMS[type].includes(selected))$(id).value=selected;
+}
 function saleBalance(s){
  const locks=records.filter(r=>r.saleId===s.id),locked=locks.reduce((n,r)=>n+r.g,0),received=locks.reduce((n,r)=>n+sums(r).got,0),cost=locks.reduce((n,r)=>n+r.total,0),paid=locks.reduce((n,r)=>n+sums(r).paid,0),toReceive=locks.reduce((n,r)=>n+sums(r).g,0),over=locks.reduce((n,r)=>n+sums(r).over,0),invoice=locks.reduce((n,r)=>n+sums(r).invoice,0),invoiceMismatch=locks.some(r=>sums(r).invoiceDiff!==0);
  const qtyKnown=locks.every(r=>Number.isSafeInteger(r.qty)&&r.qty>0),lockedQty=locks.reduce((n,r)=>n+(r.qty||0),0),receivedQty=locks.reduce((n,r)=>n+sums(r).gotQty,0),qtyMismatch=locks.some(r=>sums(r).qtyMismatch)||(qtyKnown&&locked>=s.g&&lockedQty!==s.qty);
@@ -293,7 +302,7 @@ function renderWorkflow(){
  if(window.lucide)lucide.createIcons();
 }
 function syncLockSale(){
- const s=sales.find(x=>x.id===$('lockSale').value);$('goldType').disabled=Boolean(s);$('customerRef').readOnly=Boolean(s);
+ const s=sales.find(x=>x.id===$('lockSale').value);$('goldType').disabled=false;$('customerRef').readOnly=Boolean(s);
  if(s){const b=saleBalance(s);$('goldType').value=s.type;setItems('buyItem',s.type,s.item);$('gramsPerBaht').value=s.type==='bar'?'15.244':'15.2';$('buyWeight').value=(b.toLock/10000).toFixed(4);$('buyWeight').max=(b.toLock/10000).toFixed(4);$('buyDate').min=s.date;$('customerRef').value=s.ref+' · '+s.customer;$('lockContext').innerHTML=`<strong>${esc(s.ref)} · ${esc(s.customer)}</strong>ขาย ${thaiDate(s.date)} ${esc(s.time)} น. · ${weight(s.g/10000)} กรัม<br>ราคาทองวันขาย ${money(s.dayRate)} บาท/บาททอง · ยอดขายจริง ${money(s.total/100)} บาท<br>ล็อกแล้ว ${weight(b.locked/10000)} กรัม · ยังต้องล็อก ${weight(b.toLock/10000)} กรัม`;}
  else{$('buyWeight').removeAttribute('max');$('buyDate').removeAttribute('min');setItems('buyItem',$('goldType').value);$('lockContext').textContent=sales.some(s=>saleBalance(s).toLock>0)?'เลือกใบขายที่ต้องการล็อกทอง':'ยังไม่มีใบขายที่รอล็อก กรุณาบันทึกขายลูกค้าก่อน';}
  if(s){const b=saleBalance(s);$('buyQty').value=b.qtyKnown&&b.toLockQty>0?b.toLockQty:'';$('lockContext').insertAdjacentHTML('beforeend','<br>ขาย '+s.qty+' ชิ้น · ล็อกแล้ว '+(b.qtyKnown?b.lockedQty:'ไม่ระบุ')+' ชิ้น');}
@@ -327,7 +336,7 @@ $('saleForm').addEventListener('submit',e=>{
  if(!calc||!ref||!customer){$('saleError').textContent='กรุณากรอกข้อมูล น้ำหนัก และราคาให้ครบ';return;}
  if(sales.some(s=>s.id!==editingSaleId&&s.ref.toLowerCase()===ref.toLowerCase())){$('saleError').textContent='เลขที่ใบขายนี้มีอยู่แล้ว';return;}
  const old=sales.find(s=>s.id===editingSaleId),attached=records.find(r=>r.id===attachingPurchaseId),locks=old?saleBalance(old).locks:attached?[attached]:[],locked=locks.reduce((n,r)=>n+r.g,0),date=$('saleDate').value,time=$('saleTime').value,type=$('saleType').value;
- if(calc.g<locked||calc.qty<locks.reduce((n,r)=>n+(r.qty||0),0)||locks.some(r=>r.type!==type||date+time>r.date+r.time)){$('saleError').textContent='จำนวนชิ้นและน้ำหนักขายต้องไม่น้อยกว่าที่ล็อกแล้ว และวันเวลาขายต้องไม่หลังโทรล็อกทอง';return;}
+ if(calc.g<locked||calc.qty<locks.reduce((n,r)=>n+(r.qty||0),0)||locks.some(r=>date+time>r.date+r.time)){$('saleError').textContent='จำนวนชิ้นและน้ำหนักขายต้องไม่น้อยกว่าที่ล็อกแล้ว และวันเวลาขายต้องไม่หลังโทรล็อกทอง';return;}
  const sale={id:old?.id||crypto.randomUUID(),ref,customer,date,time,type,item:$('saleItem').value,product:$('saleProduct').value.trim(),note:$('saleNote').value.trim(),...calc};
  const nextSales=old?sales.map(s=>s.id===old.id?sale:s):[...sales,sale],nextRecords=records.map(r=>r.id===attachingPurchaseId?{...r,saleId:sale.id}:r);
  if(!persist(nextRecords,nextSales)){$('saleError').textContent='บันทึกไม่สำเร็จ กรุณาลองใหม่';return;}
