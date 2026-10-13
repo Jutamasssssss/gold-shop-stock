@@ -100,7 +100,7 @@ dialog{border:1px solid #d6d9cf;border-radius:8px;padding:0;width:min(770px,calc
   <div class="dialog-head"><div><small>ขั้นที่ 2 · โทรล็อกทอง</small><h2 id="purchaseTitle">ล็อกทองกับร้านส่ง</h2></div><button class="icon" type="button" data-close="purchaseDialog" aria-label="ปิด" title="ปิด"><i data-lucide="x"></i></button></div>
   <div class="body">
    <div class="form-grid" style="margin-bottom:18px"><div class="span2"><label for="lockSale">ใบขายลูกค้าที่ต้องการล็อกทองให้</label><select id="lockSale" required></select></div><div class="span2"><p class="context-note" id="lockContext"></p></div><div><label for="supplierName">ร้านส่งที่โทรล็อก</label><input id="supplierName" required maxlength="100" placeholder="ชื่อร้านส่ง"></div><div><label for="buyItem">ชนิดทองที่ล็อก</label><select id="buyItem" required></select></div></div>
-   <h3 class="form-section first">ข้อมูลการตัดซื้อ</h3>
+   <h3 class="form-section first" id="lockFormHeading">ข้อมูลการตัดซื้อ</h3>
    <div class="form-grid">
     <div><label for="buyDate">วันที่โทรล็อกทอง</label><input id="buyDate" type="date" required></div><div><label for="buyTime">เวลาที่โทรล็อก</label><input id="buyTime" type="time" required></div>
     <div><label for="buyRef">เลขที่ใบตัดซื้อร้านส่ง</label><input id="buyRef" required maxlength="60" placeholder="เช่น TR261001624"></div><div><label for="customerRef">อ้างอิงใบขาย / ลูกค้า (ถ้ามี)</label><input id="customerRef" maxlength="100" placeholder="เลขที่ใบขายหรือชื่อลูกค้า"></div>
@@ -120,7 +120,7 @@ dialog{border:1px solid #d6d9cf;border-radius:8px;padding:0;width:min(770px,calc
    <div class="form-grid"><label class="check"><input id="paidNow" type="checkbox">จ่ายเงินจริงครบแล้ว ณ เวลาตัดซื้อ</label><div class="span2"><label for="buyNote">เหตุผล / หมายเหตุการโทรล็อก</label><textarea id="buyNote" rows="2" maxlength="500" placeholder="เช่น ล็อกราคาไว้ก่อน รอร้านส่งนำทองมาส่ง"></textarea></div></div>
    <p id="buyError" class="error" role="alert"></p>
   </div>
-  <div class="foot"><button type="button" data-work-close>ปิดงาน</button><button type="submit" class="primary"><i data-lucide="check"></i>บันทึกโทรล็อกทอง</button></div>
+  <div class="foot"><button type="button" data-work-close>ปิดงาน</button><button type="button" id="cancelLockEdit" hidden>ยกเลิกการแก้ไข</button><button type="submit" class="primary" id="saveLock">บันทึกโทรล็อกทอง</button></div>
  </form>
 </dialog>
 <dialog id="detailDialog" aria-labelledby="detailTitle">
@@ -153,7 +153,7 @@ const DAY=86400000;
 const STORE='gold-shop-purchase-pilot-v1';
 function seed(){return [];}
 let records=seed(), sales=[], currentType='all', selectedId=null;
-let editingSaleId=null, attachingPurchaseId=null, linkingPurchaseId=null, workSaleId=null, removedPieces=[], fieldPreviewMode=false;
+let editingSaleId=null, editingLockId=null, attachingPurchaseId=null, linkingPurchaseId=null, workSaleId=null, removedPieces=[], fieldPreviewMode=false;
 let storageSnapshot=null, storageReadable=true;
 try{
  storageSnapshot=localStorage.getItem(STORE);
@@ -212,26 +212,50 @@ function calculate(){
  $('calcRate').textContent=perGram.toLocaleString('th-TH',{minimumFractionDigits:4,maximumFractionDigits:4});$('calcTotal').textContent=money(total/100);$('calcFormula').textContent=money(rate)+' ÷ '+basis+' × '+weight(g)+' + '+money(fee)+' = '+money(total/100)+' บาท';return {rate,basis,g:units(g),fee:cents(fee),total};
 }
 function openPurchase(saleId=''){
+ resetLockEdit();
  $('purchaseForm').reset();$('buyDate').value=today();$('buyTime').value='';$('buyError').textContent='';
  $('lockSale').innerHTML='<option value="">เลือกใบขายลูกค้า</option>'+sales.filter(s=>saleBalance(s).toLock>0).map(s=>`<option value="${esc(s.id)}">${esc(s.ref)} · ${esc(s.customer)} · รอล็อก ${weight(saleBalance(s).toLock/10000)} กรัม</option>`).join('');
  if(saleId)$('lockSale').value=saleId;
  resetSupplier();$('calcFormula').textContent='ราคาต่อบาท ÷ กรัมต่อบาท × น้ำหนักจริง + ค่าใช้จ่าย';syncLockSale();calculate();
 }
 $('purchaseForm').addEventListener('submit',e=>{
- e.preventDefault();const calc=calculate(),ref=$('buyRef').value.trim(),sale=sales.find(s=>s.id===$('lockSale').value);
- if(!sale||!calc||!ref||!$('supplierName').value.trim()){$('buyError').textContent='กรุณาเลือกใบขาย และกรอกราคา น้ำหนัก เลขที่ตัดซื้อ และร้านส่งให้ครบ';return;}
- if(records.some(r=>r.ref.toLowerCase()===ref.toLowerCase())){$('buyError').textContent='เลขที่ตัดซื้อนี้มีอยู่แล้ว กรุณาตรวจสอบเพื่อไม่บันทึกซ้ำ';return;}
+ e.preventDefault();if(fieldPreviewMode)return;const old=records.find(r=>r.id===editingLockId),calc=calculate(),ref=$('buyRef').value.trim(),sale=sales.find(s=>s.id===(old?old.saleId:$('lockSale').value));
+ if(editingLockId&&!old){$('buyError').textContent='ไม่พบใบล็อกเดิม กรุณาเปิดงานใหม่';return;}
+ if((!sale&&!old)||!calc||!ref||!$('supplierName').value.trim()){$('buyError').textContent='กรุณาเลือกใบขาย และกรอกราคา น้ำหนัก เลขที่ตัดซื้อ และร้านส่งให้ครบ';return;}
+ if(records.some(r=>r.id!==old?.id&&r.ref.toLowerCase()===ref.toLowerCase())){$('buyError').textContent='เลขที่ตัดซื้อนี้มีอยู่แล้ว กรุณาตรวจสอบเพื่อไม่บันทึกซ้ำ';return;}
  const date=$('buyDate').value,time=$('buyTime').value;
  if($('dueDate').value&&$('dueDate').value<date){$('buyError').textContent='วันกำหนดเคลียร์ต้องไม่ก่อนวันตัดซื้อ';return;}
- if(sale&&(calc.g>saleBalance(sale).toLock||(date+time)<(sale.date+sale.time))){$('buyError').textContent='ตรวจสอบน้ำหนักที่ยังต้องล็อก และวันเวลาซึ่งต้องไม่ก่อนขายลูกค้า';return;}
+ if(!date||!time||!Number.isFinite(Number($('buyDayRate').value))||Number($('buyDayRate').value)<=0){$('buyError').textContent='กรุณากรอกวันที่ เวลา และราคาทองอ้างอิงให้ครบ';return;}
+ if(sale&&(calc.g>saleBalance(sale).toLock+(old?.g||0)||(date+time)<(sale.date+sale.time))){$('buyError').textContent='ตรวจสอบน้ำหนักที่ยังต้องล็อก และวันเวลาซึ่งต้องไม่ก่อนขายลูกค้า';return;}
  if(!ITEMS[$('goldType').value]?.includes($('buyItem').value)){$('buyError').textContent='กรุณาเลือกชนิดทองให้ตรงกับประเภทที่โทรล็อก';return;}
- const qty=Number($('buyQty').value),quantity=saleBalance(sale);
- if(!Number.isSafeInteger(qty)||qty<=0||(quantity.qtyKnown&&qty>quantity.toLockQty)){$('buyError').textContent='จำนวนชิ้นที่ล็อกต้องเป็นจำนวนเต็มมากกว่า 0 และไม่เกินจำนวนที่ยังต้องล็อก';return;}
- const row={id:crypto.randomUUID(),ref,date,time,qty,type:$('goldType').value,item:$('buyItem').value,dayRate:Number($('buyDayRate').value),supplier:$('supplierName').value.trim(),saleId:sale?.id||null,...calc,due:$('dueDate').value,customer:sale?sale.ref+' · '+sale.customer:$('customerRef').value.trim(),note:$('buyNote').value.trim(),events:[]};
- if($('paidNow').checked)row.events.push({id:crypto.randomUUID(),date,time,grams:0,money:row.total,ref:'จ่าย ณ เวลาตัดซื้อ'});
- if(!persist([...records,row])){$('buyError').textContent='บันทึกไม่สำเร็จ พื้นที่จัดเก็บไม่พร้อม กรุณาลองใหม่';return;}
- render();refreshWork(row.id);scrollWork('jobLock');toast('บันทึกโทรล็อกแล้ว · ค้างรับทอง สามารถปิดงานแล้วกลับมารับทองภายหลัง');
+ const qty=Number($('buyQty').value),otherLocks=sale?records.filter(r=>r.saleId===sale.id&&r.id!==old?.id):[];
+ if(!Number.isSafeInteger(qty)||qty<=0||(sale&&otherLocks.every(r=>Number.isSafeInteger(r.qty))&&qty>sale.qty-otherLocks.reduce((n,r)=>n+r.qty,0))){$('buyError').textContent='จำนวนชิ้นที่ล็อกต้องเป็นจำนวนเต็มมากกว่า 0 และไม่เกินจำนวนที่ยังต้องล็อก';return;}
+ if(old){const received=sums(old);
+  if(calc.g<received.got||qty<received.gotQty){$('buyError').textContent='แก้ไขจำนวนหรือน้ำหนักต่ำกว่าทองที่รับจริงแล้วไม่ได้';return;}
+  if(old.events.some(event=>event.date&&(date+time)>(event.date+(event.time||'23:59')))){$('buyError').textContent='วันเวลาล็อกต้องไม่หลังประวัติรับทองหรือชำระเงินเดิม';return;}
+  if(received.got>0&&($('goldType').value!==old.type||$('buyItem').value!==old.item)){$('buyError').textContent='มีประวัติรับทองแล้ว ไม่สามารถเปลี่ยนประเภทหรือชนิดทองได้';return;}
+ }
+ const row={...old,id:old?.id||crypto.randomUUID(),ref,date,time,qty,type:$('goldType').value,item:$('buyItem').value,dayRate:Number($('buyDayRate').value),supplier:$('supplierName').value.trim(),saleId:old?old.saleId:sale?.id||null,...calc,due:$('dueDate').value,customer:sale?sale.ref+' · '+sale.customer:$('customerRef').value.trim(),note:$('buyNote').value.trim(),events:old?old.events:[]};
+ if(old){const {events,revisions,...before}=old;row.updatedAt=new Date().toISOString();row.revisions=[...(revisions||[]),{at:row.updatedAt,before}];}
+ if(!old&&$('paidNow').checked)row.events.push({id:crypto.randomUUID(),date,time,grams:0,money:row.total,ref:'จ่าย ณ เวลาตัดซื้อ'});
+ if(!persist(old?records.map(r=>r.id===old.id?row:r):[...records,row])){$('buyError').textContent='บันทึกไม่สำเร็จ พื้นที่จัดเก็บไม่พร้อม กรุณาลองใหม่';return;}
+ resetLockEdit();render();refreshWork(row.id);scrollWork('jobLock');toast(old?'บันทึกการแก้ไขโทรล็อกแล้ว · ประวัติรับทองและชำระเงินเดิมยังอยู่':'บันทึกโทรล็อกแล้ว · ค้างรับทอง สามารถปิดงานแล้วกลับมารับทองภายหลัง');
 });
+function resetLockEdit(){editingLockId=null;$('buyError').textContent='';$('saveLock').textContent='บันทึกโทรล็อกทอง';$('cancelLockEdit').hidden=true;$('lockFormHeading').textContent='ข้อมูลการตัดซื้อ';$('lockSale').disabled=false;$('lockSale').required=true;$('paidNow').disabled=false;$('paidNow').closest('label').hidden=false;}
+function editLock(id){
+ const r=records.find(x=>x.id===id);if(!r)return;
+ if(!$('workDialog').open||workSaleId!==r.saleId)openSale(r.saleId||null,r.saleId?null:r.id);
+ editingLockId=id;$('purchaseForm').reset();$('lockFields').hidden=false;$('lockFields').disabled=false;$('lockWait').hidden=true;
+ $('lockSale').innerHTML=`<option value="${esc(r.saleId||'')}">${esc(r.customer||r.ref)}</option>`;$('lockSale').disabled=true;$('lockSale').required=false;
+ $('lockContext').textContent='แก้ไขใบล็อก '+r.ref+' · ประวัติรับทองและชำระเงินเดิมจะไม่เปลี่ยน';
+ $('lockFormHeading').textContent='แก้ไขโทรล็อก · '+r.ref;$('saveLock').textContent='บันทึกการแก้ไขโทรล็อก';$('cancelLockEdit').hidden=false;
+ for(const [field,key] of [['buyRef','ref'],['buyDate','date'],['buyTime','time'],['buyQty','qty'],['buyRate','rate'],['buyDayRate','dayRate'],['gramsPerBaht','basis'],['dueDate','due'],['buyNote','note'],['customerRef','customer']])$(field).value=r[key]??'';
+ $('goldType').disabled=false;$('goldType').value=r.type;setItems('buyItem',r.type,r.item);$('buyWeight').value=r.g/10000;$('buyFee').value=r.fee/100;
+ const sale=sales.find(s=>s.id===r.saleId);$('buyWeight').removeAttribute('max');$('buyDate').removeAttribute('min');if(sale){$('buyWeight').max=(saleBalance(sale).toLock+r.g)/10000;$('buyDate').min=sale.date;}
+ $('supplierChoice').value=['เจี๊ยบเซ่งเฮง','gold'].includes(r.supplier)?r.supplier:'other';$('supplierOther').value=r.supplier||'';syncSupplier();
+ $('paidNow').checked=false;$('paidNow').disabled=true;$('paidNow').closest('label').hidden=true;$('buyError').textContent='';calculate();scrollWork('jobLock');
+}
+$('cancelLockEdit').addEventListener('click',()=>{resetLockEdit();refreshWork();scrollWork('jobLock');});
 function openDetail(id){
  selectedId=id;const r=records.find(x=>x.id===id);if(!r)return;const b=sums(r),sale=sales.find(s=>s.id===r.saleId);
  $('detailTitle').textContent=r.ref;
@@ -301,8 +325,11 @@ function renderWorkflow(){
   const review=`<span class="status ${state==='done'?'done':state==='missing'?'':'partial'}">${FLOW_LABELS[state]}</span><div class="checkline"><span>ขายลูกค้า</span><b>${s?weight(s.g/10000):'—'} g</b></div><div class="checkline"><span>ล็อกแล้ว</span><b>${weight(b.locked/10000)} g</b></div><div class="checkline"><span>รับแล้ว</span><b>${weight(b.received/10000)} g</b></div><hr style="border:0;border-top:1px solid var(--line)"><div class="checkline"><span>ยังต้องล็อก</span><b class="red">${s?weight(b.toLock/10000):'รอใบขาย'}${s?' g':''}</b></div><div class="checkline"><span>ยังต้องรับ</span><b class="red">${weight(b.toReceive/10000)} g</b></div><div class="checkline"><span>ค้างจ่าย</span><b>${money(b.toPay/100)} ฿</b></div>${s&&b.toLock>0?`<div class="actions"><button class="primary" data-lock-sale="${esc(s.id)}"><i data-lucide="phone"></i>ล็อกทองเพิ่ม</button></div>`:''}`;
   return `<tr><td data-label="1 · ขายลูกค้า">${saleCell}</td><td data-label="2 · โทรล็อกทองร้านส่ง">${b.locks.map(r=>`<small>${esc(r.ref)} · ล็อก ${Number.isSafeInteger(r.qty)?r.qty:'ไม่ระบุ'} ชิ้น</small>`).join('')}${lockCell}</td><td data-label="3 · รับทอง / ชำระเงิน">${receiveCell}</td><td data-label="ตรวจยอด">${review}${s?`<hr style="border:0;border-top:1px solid var(--line)"><div class="checkline"><span>จำนวนขาย</span><b>${s.qty} ชิ้น</b></div><div class="checkline"><span>จำนวนล็อก</span><b>${b.qtyKnown?b.lockedQty:'ไม่ระบุ'} ชิ้น</b></div><div class="checkline ${b.qtyMismatch?'red':''}"><span>จำนวนรับ</span><b>${b.receivedQty} ชิ้น</b></div>`:''}${b.over?`<div class="checkline red"><span>รับเกินใบล็อก</span><b>${weight(b.over/10000)} g</b></div>`:''}</td></tr>`;
  }).join(''):sales.length||records.length?'<tr><td colspan="4" class="empty">ไม่พบรายการตามเงื่อนไข</td></tr>':'<tr><td colspan="4"><div class="work-empty"><h3>ยังไม่มีงานที่บันทึก</h3><p>งานถัดไป: ทอง 0.3 กรัม จำนวน 2 ชิ้น รวม 0.6 กรัม</p><button class="primary" data-new-work="true">เปิดงานใหม่</button></div></td></tr>';
+ [...$('flowRows').rows].forEach((row,i)=>{const group=groups[i];if(!group)return;row.cells[1].querySelectorAll('.subrecord').forEach((cell,j)=>cell.insertAdjacentHTML('beforeend',lockEditButton(group.locks[j].id)));});
  if(window.lucide)lucide.createIcons();
 }
+function lockEditButton(id){return `<button type="button" style="align-self:center;flex-shrink:0" data-edit-lock="${esc(id)}"><i data-lucide="pencil"></i>แก้ไขโทรล็อก</button>`;}
+document.addEventListener('click',e=>{const button=e.target.closest('[data-edit-lock]');if(button&&!fieldPreviewMode)editLock(button.dataset.editLock);});
 function syncLockSale(){
  const s=sales.find(x=>x.id===$('lockSale').value);$('goldType').disabled=false;$('customerRef').readOnly=Boolean(s);
  if(s){const b=saleBalance(s);$('goldType').value=s.type;setItems('buyItem',s.type,s.item);$('gramsPerBaht').value=s.type==='bar'?'15.244':'15.2';$('buyWeight').value=(b.toLock/10000).toFixed(4);$('buyWeight').max=(b.toLock/10000).toFixed(4);$('buyDate').min=s.date;$('customerRef').value=s.ref+' · '+s.customer;$('lockContext').innerHTML=`<strong>${esc(s.ref)} · ${esc(s.customer)}</strong>ขาย ${thaiDate(s.date)} ${esc(s.time)} น. · ${weight(s.g/10000)} กรัม<br>ราคาทองวันขาย ${money(s.dayRate)} บาท/บาททอง · ยอดขายจริง ${money(s.total/100)} บาท<br>ล็อกแล้ว ${weight(b.locked/10000)} กรัม · ยังต้องล็อก ${weight(b.toLock/10000)} กรัม`;}
@@ -320,6 +347,7 @@ function calcSale(preserveTotals=false){
  const valid=qty>0&&lines.every(l=>l.customer&&l.seller&&Number.isSafeInteger(l.g)&&l.g>0&&Number.isSafeInteger(l.price)&&l.price>0)&&Number.isSafeInteger(g)&&Number.isSafeInteger(total)&&dayRate>0&&Number.isFinite(dayRate);return valid?{qty,g,unitPrice,dayRate,total,lines}:null;
 }
 function openSale(id=null,purchaseId=null){
+ resetLockEdit();
  fieldPreviewMode=false;$('workDialog').classList.remove('preview-only');
  document.querySelectorAll('#workDialog section').forEach(el=>el.hidden=false);
  document.querySelectorAll('#workDialog button[type="submit"]').forEach(b=>b.disabled=false);$('fillRemaining').disabled=false;
@@ -393,11 +421,14 @@ $('closeWork').addEventListener('click',()=>$('workDialog').close());
 document.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{if(fieldPreviewMode)selectFieldPreview(b.dataset.step);else scrollWork(b.dataset.step);}));
 function scrollWork(id){$(id).scrollIntoView({block:'start',behavior:'instant'});}
 function refreshWork(preferredLock=null){
+ resetLockEdit();
  const sale=sales.find(s=>s.id===workSaleId),b=sale?saleBalance(sale):null;
  $('workTitle').textContent=sale?sale.ref:'งานใหม่ · 0.3 กรัม × 2 ชิ้น';
  $('workSummary').textContent=sale?'ขาย '+sale.qty+' ชิ้น / '+weight(sale.g/10000)+' กรัม · ล็อก '+(b.qtyKnown?b.lockedQty:'ไม่ระบุ')+' ชิ้น / '+weight(b.locked/10000)+' กรัม · รับจริง '+b.receivedQty+' ชิ้น / '+weight(b.received/10000)+' กรัม · '+FLOW_LABELS[flowState(sale,b)]:'ยังไม่บันทึก · น้ำหนักตั้งต้นรวม 0.6 กรัม';
  $('lockWait').hidden=Boolean(sale);$('lockFields').disabled=!sale||b.toLock<=0;$('lockFields').hidden=!sale||b.toLock<=0;
  $('workLockList').innerHTML=b?b.locks.map(r=>`<div class="work-lock-row"><div><strong>${esc(r.ref)} · ${esc(r.supplier||'ร้านส่ง')}</strong>${lockStatusBadges(r)}${r.note?'<small>เหตุผล / หมายเหตุ: '+esc(r.note)+'</small>':''}<small>โทรล็อก ${thaiDate(r.date)} ${esc(r.time)} น. · ${weight(r.g/10000)} กรัม<br>ราคาทองวันล็อก ${r.dayRate?money(r.dayRate):'ไม่ระบุ'} · ราคาที่ล็อก ${r.rate?money(r.rate):'ไม่ระบุ'} บาท/บาททอง · รวม ${money(r.total/100)} บาท</small></div><button type="button" data-work-receive="${esc(r.id)}">รับทองในงานนี้</button></div>`).join(''):'';
+ [...$('workLockList').children].forEach((row,i)=>{row.style.alignItems='center';row.firstElementChild.style.flex='1';row.insertAdjacentHTML('beforeend',lockEditButton(b.locks[i].id));});
+ if(window.lucide)lucide.createIcons();
  if(sale&&b.toLock>0)openPurchase(sale.id);
  $('receiveWait').hidden=Boolean(b?.locks.length);$('receiptPick').hidden=!b?.locks.length;$('receiveFields').hidden=!b?.locks.length;
  if(b?.locks.length){$('workReceiptLock').innerHTML=b.locks.map(r=>`<option value="${esc(r.id)}">${esc(r.ref)} · ${weight(r.g/10000)} กรัม · ${statusLabels[status(r)]}</option>`).join('');if(b.locks.some(r=>r.id===preferredLock))$('workReceiptLock').value=preferredLock;openDetail($('workReceiptLock').value);renderInvoiceHistory();}
