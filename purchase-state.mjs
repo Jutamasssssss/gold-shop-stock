@@ -24,6 +24,21 @@ export function validateState(state) {
       if (!Number.isSafeInteger(row.g) || row.g <= 0 || !Number.isSafeInteger(row.total) || row.total < 0) fail('น้ำหนักหรือยอดเงินไม่ถูกต้อง: ' + row.ref);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date) || !/^\d{2}:\d{2}$/.test(row.time)) fail('วันที่หรือเวลาไม่ครบ: ' + row.ref);
       if (!['jewelry', 'bar'].includes(row.type)) fail('ประเภททองไม่ถูกต้อง: ' + row.ref);
+      if (key === 'sales') {
+        for (const line of row.lines || []) {
+          if (line.laborCost != null && (!Number.isSafeInteger(line.laborCost) || line.laborCost < 0)) fail('ต้นทุนค่ากำเหน็จไม่ถูกต้อง: ' + row.ref);
+        }
+        const returned = new Set(), eventIds = new Set(), count = row.lines?.length || 1;
+        if (row.returnHistory !== undefined && !Array.isArray(row.returnHistory)) fail('ประวัติคืนสินค้าไม่ถูกต้อง');
+        for (const event of row.returnHistory || []) {
+          if (!event.id || eventIds.has(event.id) || !['return', 'restore'].includes(event.action) || !/^\d{4}-\d{2}-\d{2}$/.test(event.date) || event.date < row.date || !/^\d{2}:\d{2}$/.test(event.time) || typeof event.reason !== 'string' || !event.reason.trim() || !Array.isArray(event.indexes) || !event.indexes.length || new Set(event.indexes).size !== event.indexes.length || !event.snapshot || !Number.isSafeInteger(event.snapshot.total) || !Array.isArray(event.snapshot.lines)) fail('ประวัติคืนสินค้าไม่ครบ: ' + row.ref);
+          eventIds.add(event.id);
+          for (const index of event.indexes) {
+            if (!Number.isInteger(index) || index < 0 || index >= count || (event.action === 'return' ? returned.has(index) : !returned.has(index))) fail('รายการคืนสินค้าซ้ำหรือไม่ตรงกับต้นฉบับ');
+            if (event.action === 'return') returned.add(index); else returned.delete(index);
+          }
+        }
+      }
       if (key === 'records') {
         if (!Array.isArray(row.events)) fail('ประวัติรับทองไม่ครบ: ' + row.ref);
         const eventIds = new Set();
@@ -48,6 +63,13 @@ export function changesBetween(before, after) {
     for (const row of before[key]) {
       const replacement = next.get(row.id);
       if (!replacement) fail('ไม่อนุญาตให้ลบข้อมูลเดิม');
+      if (key === 'sales' && (row.returnHistory?.length || replacement.returnHistory?.length)) {
+        for (let i = 0; i < (row.returnHistory||[]).length; i++) {
+          if (stable(row.returnHistory[i]) !== stable(replacement.returnHistory?.[i])) fail('ไม่อนุญาตให้ลบหรือเขียนทับประวัติคืนสินค้า');
+        }
+        const original = sale => ({ref:sale.ref,date:sale.date,time:sale.time,type:sale.type,item:sale.item,customer:sale.customer,g:sale.g,total:sale.total,qty:sale.qty,lines:(sale.lines||[]).map(({laborCost,...line})=>line)});
+        if (stable(original(row)) !== stable(original(replacement))) fail('งานที่มีประวัติคืนสินค้าไม่สามารถเปลี่ยนรายการขายต้นฉบับ');
+      }
       if (key === 'records') {
         for (let i = 0; i < row.events.length; i++) {
           if (stable(row.events[i]) !== stable(replacement.events[i])) fail('ไม่อนุญาตให้ลบหรือเขียนทับประวัติรับทองและชำระเงิน');
