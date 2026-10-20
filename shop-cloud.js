@@ -2,6 +2,7 @@ import {initializeApp, getApps} from 'https://www.gstatic.com/firebasejs/10.7.0/
 import {getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserSessionPersistence} from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 import {getFirestore, collection, doc, onSnapshot, runTransaction, serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 import {stable, OWNER_UID} from './purchase-state.mjs';
+import {mergeSavingsWrite, assertSavingsLedgerWrite, mergeSavingsCustomerWrite, sameLedgerWrite} from './savings-state.mjs?v=savings-20261020';
 
 const app = getApps().find(app=>app.name==='purchase-shared') || initializeApp({apiKey:'AIzaSyBvSzkwvetsGtthnNljRZGMnlUC3pzfhXs',authDomain:'gold-shop-acf19.firebaseapp.com',projectId:'gold-shop-acf19',appId:'1:10469108848:web:c6bcefb2444ce4d55458b5'},'purchase-shared');
 const auth=getAuth(app),db=getFirestore(app), observed=new Map(), subscriptions=new Set(), pending=new Map();
@@ -11,6 +12,7 @@ function check(){if(auth.currentUser?.uid!==OWNER_UID||!navigator.onLine)throw E
 function status(text,error=false){window.shopCloudStatus?.(text,error);}
 function deliver(key,callback,data,original){
  if(writesPending||window.shopHasPendingWork?.()){pending.set(key,()=>deliver(key,callback,data,original));return;}
+ if(key==='savings'&&original.some(([id,value])=>(observed.get(id)?._savingsRevision||0)>(value?._savingsRevision||0))){pending.delete(key);return;}
  original.forEach(([key,value])=>observed.set(key,value));
  callback(data);pending.delete(key);
 }
@@ -23,19 +25,37 @@ async function saveMany(changes){
  for(const row of rows)if(row.before===undefined)throw Error('ยังไม่ได้อ่านข้อมูลล่าสุดของ '+row.col+' กรุณารอการเชื่อมต่อ');
  const run=async()=>{
   check();if(epoch!==session)throw Error('บัญชีเปลี่ยนระหว่างบันทึก');
-  await runTransaction(db,async tx=>{
-   const originals=[];
+  const committed=await runTransaction(db,async tx=>{
+   const originals=[],resolved=[];
    for(const row of rows){const snap=await tx.get(doc(db,row.col,row.id));const actual=snap.exists()?snap.data():null;
     if(actual?._deleted&&!row.data._deleted)throw Error('รหัสรายการนี้มีข้อมูลเดิมที่ยกเลิกแล้ว กรุณาใช้รหัสใหม่เพื่อไม่ทับประวัติ');
-    if(stable(actual)!==stable(row.before)&&stable(actual)!==stable(row.data))throw Error('ข้อมูล '+row.id+' ถูกแก้จากอีกเครื่องแล้ว ระบบไม่เขียนทับ กรุณาสำรองงานที่ยังไม่บันทึกแล้วเปิดหน้าใหม่');
+    if(row.col==='savings')resolved.push({...row,data:mergeSavingsWrite(actual,row.before,row.data)});
+    else if(row.col==='customers'&&rows.some(item=>item.col==='savings'))resolved.push({...row,data:mergeSavingsCustomerWrite(actual,row.before,row.data)});
+    else {
+     if(stable(actual)!==stable(row.before)&&stable(actual)!==stable(row.data)&&!(row.col==='savingsPayments'&&sameLedgerWrite(actual,row.data)))throw Error('ข้อมูล '+row.id+' ถูกแก้จากอีกเครื่องแล้ว ระบบไม่เขียนทับ กรุณาสำรองงานที่ยังไม่บันทึกแล้วเปิดหน้าใหม่');
+     let data=row.data;
+     if(row.col==='savingsPayments'){
+      const account=resolved.find(item=>item.col==='savings'&&item.id===data.accountId)?.data;
+      const payment=account?.payments?.find(item=>item.id===data.paymentId);
+      if(payment&&!data._deleted)data={...data,payment};
+      assertSavingsLedgerWrite(actual,data);
+     }
+     if(row.col==='transactions'&&data.type==='savings_close'){
+      const account=resolved.find(item=>item.col==='savings'&&item.data.id===data.savingsId)?.data;
+      if(account&&Number(data.total)!==Number(account.saved))throw Error('มีรายการออมใหม่ระหว่างปิดบัญชี กรุณาตรวจยอดล่าสุดก่อนรับสินค้า');
+     }
+     resolved.push({...row,data});
+    }
     originals.push(actual);
    }
-   rows.forEach((row,index)=>{
+   resolved.forEach((row,index)=>{
     tx.set(doc(db,'shopAuditV1',crypto.randomUUID()),{collection:row.col,document:row.id,before:originals[index],after:row.data,by:OWNER_UID,at:serverTimestamp()});
     tx.set(doc(db,row.col,row.id),row.data);
    });
+   return resolved.map(({col,id,data})=>({col,id,data}));
   });
-  rows.forEach(row=>observed.set(row.col+'/'+row.id,row.data));
+  committed.forEach(row=>observed.set(row.col+'/'+row.id,row.data));
+  return committed;
  };
  writesPending++;
  const result=writeQueue.then(run).catch(error=>{
@@ -78,4 +98,5 @@ onAuthStateChanged(auth,user=>{
  if(user?.uid===OWNER_UID){window._fb=api;window._fbReady=true;window.onShopAuth?.(user);}
  else window.onShopAuth?.(null);
 });
-window.addEventListener('offline',()=>status('ออฟไลน์ · หยุดบันทึกจนกว่าจะเชื่อมต่อได้',true));
+window.addEventListener('offline',()=>status('ออฟไลน์ · ยังบันทึกไม่ได้ กรุณาเชื่อมต่อแล้วกดบันทึกอีกครั้ง'));
+window.addEventListener('online',()=>status('เชื่อมต่อแล้ว · รายการที่ยังไม่ยืนยันให้ตรวจยอดและกดบันทึกอีกครั้ง'));
