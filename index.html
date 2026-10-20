@@ -1892,7 +1892,8 @@ function savingsPaymentUpdateTime(payment) {
 function mergeSavingsAccountDocs(localAccount, remoteAccount) {
   const local = normalizeSavingsAccount(localAccount);
   const remote = normalizeSavingsAccount(remoteAccount);
-  const localIsNewer = getDocTime(local) > getDocTime(remote);
+  const revisionDiff = (Number(local._savingsRevision)||0) - (Number(remote._savingsRevision)||0);
+  const localIsNewer = revisionDiff > 0 || (revisionDiff === 0 && getDocTime(local) > getDocTime(remote));
   const base = localIsNewer ? { ...remote, ...local } : { ...local, ...remote };
   const deletedMap = new Map();
   [...(remote._deletedPayments || []), ...(local._deletedPayments || [])].forEach(item => {
