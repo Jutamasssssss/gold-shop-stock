@@ -1510,6 +1510,7 @@
   </div>
 </div>
 
+<script src="savings-recovery.js?v=20261023"></script>
 <script type="module" src="shop-cloud.js?v=savings-20261020"></script>
 
 <script>
@@ -1562,7 +1563,7 @@ function showToast(msg, type='info') {
   if (!t) {
     t = document.createElement('div');
     t.id = 'appToast';
-    t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;transition:opacity 0.3s;box-shadow:0 4px 16px rgba(0,0,0,0.18);';
+    t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;transition:opacity 0.3s;box-shadow:0 4px 16px rgba(0,0,0,0.18);pointer-events:none;max-width:90vw;';
     document.body.appendChild(t);
   }
   t.textContent = msg;
@@ -1597,7 +1598,7 @@ window.shopCloudStatus=(text,error=false)=>{
   const status=document.getElementById('sharedStatus');
   if(status){status.textContent=text;status.style.color=error?'var(--red)':'var(--text3)';}
 };
-window.onShopAuth=user=>{
+window.onShopAuth=async user=>{
   checkpointSavingsCache();
   clearTimeout(remoteSaveTimer);remoteSaveTimer=null;remoteCollectionsReady.clear();
   Object.values(remoteShadow).forEach(map=>map.clear());
@@ -1608,10 +1609,10 @@ window.onShopAuth=user=>{
   document.querySelectorAll('.modal-overlay.open').forEach(el=>el.classList.remove('open'));
   if(!user){renderDashboard();return;}
   try {
-    if(!localStorage.getItem('gd_before_shared_auth_v1')){
+    if(!await savingsRecovery.read('gd_before_shared_auth_v1')){
       const backup={at:new Date().toISOString(),data:{}};
       ['gd_products','gd_transactions','gd_pawns','gd_savings','gd_installments','gd_customers','shop_settings'].forEach(key=>backup.data[key]=localStorage.getItem(key));
-      localStorage.setItem('gd_before_shared_auth_v1',JSON.stringify(backup));
+      await savingsRecovery.write('gd_before_shared_auth_v1',backup);
     }
   }catch(e){showToast('สร้างสำรองในเครื่องไม่ได้ ระบบยังไม่โหลดหรือเปลี่ยนข้อมูล','error');return;}
   lastSaveStatus='';document.getElementById('sidebarUserName').textContent=currentUser.name;
@@ -1993,30 +1994,33 @@ function mergeRemoteWithLocal(col, localItems, remoteItems, idField) {
   }
   return (remoteItems||[]).filter(item=>!item?._deleted);
 }
-function checkpointSavingsCache() {
+async function checkpointSavingsCache() {
   try {
     const previous = localStorage.getItem('gd_savings');
-    if (!previous || previous === '[]' || previous === localStorage.getItem('gd_savings_checkpoint_latest')) return true;
-    localStorage.setItem('gd_savings_checkpoint_' + crypto.randomUUID(), JSON.stringify({at:new Date().toISOString(),data:previous}));
-    localStorage.setItem('gd_savings_checkpoint_latest', previous);
+    await savingsRecovery.checkpoint(previous);
     return true;
   } catch (error) {
     showToast('พื้นที่สำรองในเครื่องเต็ม ระบบยังไม่เขียนทับสำรองออมทองเดิม กรุณาดาวน์โหลดสำรอง','error');
     return false;
   }
 }
+let localCacheChain = Promise.resolve();
 function saveLocalCache() {
-  if (!checkpointSavingsCache()) return;
-  try {
-    localStorage.setItem('gd_products', JSON.stringify(products));
-    localStorage.setItem('gd_transactions', JSON.stringify(transactions));
-    localStorage.setItem('gd_pawns', JSON.stringify(pawns));
-    localStorage.setItem('gd_savings', JSON.stringify(savingsAccounts));
-    localStorage.setItem('gd_installments', JSON.stringify(installmentContracts));
-    localStorage.setItem('gd_customers', JSON.stringify(customers));
-  } catch (error) {
-    showToast('พื้นที่สำรองในเครื่องไม่พอ กรุณาดาวน์โหลดสำรอง ข้อมูลฐานข้อมูลกลางไม่ได้ถูกลบ','error');
-  }
+  const snapshot = {gd_products:products, gd_transactions:transactions, gd_pawns:pawns,
+    gd_savings:savingsAccounts, gd_installments:installmentContracts, gd_customers:customers};
+  const serialized = Object.entries(snapshot).map(([key,value]) => [key,JSON.stringify(value)]);
+  localCacheChain = localCacheChain.catch(()=>{}).then(async () => {
+    if (!await checkpointSavingsCache()) return;
+    for (const [key,raw] of serialized) {
+      try { localStorage.setItem(key,raw); }
+      catch {
+        // Keep the existing cache and backups. The server remains authoritative.
+        try { await savingsRecovery.write('cache_'+key,{data:raw}); }
+        catch { showToast('สำรองในเครื่องไม่สำเร็จ กรุณาดาวน์โหลดสำรอง ข้อมูลกลางไม่ได้ถูกลบ','error'); }
+      }
+    }
+  });
+  return localCacheChain;
 }
 
 function normalizeAppCollections() {
@@ -2172,7 +2176,7 @@ async function commitSavingsChange(account, changedPayments=[], extras=[], opera
   rows.push(...ledger.map(data => ({col:'savingsPayments', id:data._docId, data})), ...extras);
   const key = 'gd_savings_attempt_' + operationId;
   const attempt = {id:operationId, at:now, status:'pending', changes:rows};
-  localStorage.setItem(key, JSON.stringify(attempt));
+  await savingsRecovery.write(key, attempt);
   remoteSavePending++;
   setSaveStatus('saving');
   try {
@@ -2188,7 +2192,7 @@ async function commitSavingsChange(account, changedPayments=[], extras=[], opera
     }
     // Cloud acknowledgement is authoritative even if the browser's backup storage fills up.
     try {
-      localStorage.setItem(key, JSON.stringify({...attempt,status:'confirmed',confirmedAt:new Date().toISOString()}));
+      await savingsRecovery.write(key, {...attempt,status:'confirmed',confirmedAt:new Date().toISOString()});
       saveLocalCache();
     } catch (error) {
       showToast('ฐานข้อมูลบันทึกแล้ว แต่พื้นที่สำรองในเครื่องเต็ม กรุณาดาวน์โหลดสำรอง', 'error');
@@ -2199,7 +2203,7 @@ async function commitSavingsChange(account, changedPayments=[], extras=[], opera
     return savingsAccounts.find(item => String(item._docId || item.id) === accountId);
   } catch (error) {
     savingsSaveFailed = true;
-    try { localStorage.setItem(key,JSON.stringify({...attempt,status:'unconfirmed',error:error.message})); } catch {}
+    try { await savingsRecovery.write(key,{...attempt,status:'unconfirmed',error:error.message}); } catch {}
     setSaveStatus('error','error');
     throw error;
   } finally {
@@ -2301,7 +2305,7 @@ function setupRealtimeSync() {
 
   console.log('Real-time sync activated');
   window._fb.listenDoc('settings','shop',data=>{
-    if(data){const {_docId,...settings}=data;localStorage.setItem('shop_settings',JSON.stringify(settings));applyShopSettings();if(document.getElementById('page-settings').classList.contains('active'))renderSettings();}
+    if(data){const {_docId,...settings}=data;currentShopSettings=settings;try{localStorage.setItem('shop_settings',JSON.stringify(settings));}catch{}applyShopSettings();if(document.getElementById('page-settings').classList.contains('active'))renderSettings();}
   });
 }
 
@@ -2341,7 +2345,9 @@ function showPage(id) {
 }
 
 // ============ SHOP SETTINGS (Logo + Name) ============
+let currentShopSettings = null;
 function getShopSettings() {
+  if (currentShopSettings) return currentShopSettings;
   const saved = localStorage.getItem('shop_settings');
   if (saved) return JSON.parse(saved);
   return {
@@ -2357,7 +2363,8 @@ async function saveShopSettings(s) {
   if(!requirePerm('editProduct','ไม่มีสิทธิ์แก้ไขการตั้งค่าร้าน'))return false;
   try {
     await window._fb.saveDoc('settings', 'shop', s);
-    localStorage.setItem('shop_settings', JSON.stringify(s));
+    currentShopSettings = s;
+    try { localStorage.setItem('shop_settings', JSON.stringify(s)); } catch {}
     applyShopSettings();return true;
   }catch(error){showToast(error.message,'error');return false;}
 }
@@ -2529,7 +2536,7 @@ async function doSaveShopSettings() {
   alert('✅ บันทึกการตั้งค่าเรียบร้อย');
 }
 
-function downloadLocalRecovery() {
+async function downloadLocalRecovery() {
   const snapshots={};
   for(let i=0;i<localStorage.length;i++){
     const key=localStorage.key(i);
@@ -2538,6 +2545,10 @@ function downloadLocalRecovery() {
       try { snapshots[key]=JSON.parse(raw); } catch { snapshots[key]=raw; }
     }
   }
+  try { snapshots.indexedDBRecovery = await savingsRecovery.entries(); }
+  catch { showToast('อ่านสำรองเพิ่มเติมไม่ได้ ไฟล์นี้มีเฉพาะสำรองเดิมและข้อมูลที่เปิดอยู่','error'); }
+  snapshots.currentSavings = cloneData(savingsAccounts);
+  snapshots.currentPaymentDraft = savingsPaymentOperation;
   const url=URL.createObjectURL(new Blob([JSON.stringify(snapshots,null,2)],{type:'application/json'}));
   const link=document.createElement('a');link.href=url;link.download='gold-shop-local-recovery.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
@@ -2649,8 +2660,10 @@ function applySpotPrice(value, dateText='', timeText='', updatedAt='') {
   if (!Number.isFinite(parsed) || parsed <= 0) return false;
   spot = parsed;
   spotUpdatedAt = updatedAt || new Date().toISOString();
-  localStorage.setItem('gd_spot', String(spot));
-  localStorage.setItem('gd_spot_updated_at', spotUpdatedAt);
+  try {
+    localStorage.setItem('gd_spot', String(spot));
+    localStorage.setItem('gd_spot_updated_at', spotUpdatedAt);
+  } catch {}
   const input = document.getElementById('spotInput');
   const status = document.getElementById('spotStatus');
   if (input) input.value = spot;
@@ -4713,9 +4726,12 @@ function savingsPeriodLabel(period) {
   return 'เดือน';
 }
 
-function openSavingsModal() {
+async function openSavingsModal() {
   if (!requirePerm('savings', 'ไม่มีสิทธิ์เปิดบัญชีออมทอง')) return;
   if (!requireSavingsReady()) return;
+  let draft;
+  try { draft = await savingsRecovery.read('gd_savings_account_draft'); }
+  catch { showToast('อ่านรายการรอบันทึกไม่ได้ กรุณาสำรองก่อนลองใหม่','error'); return; }
   savingsAccountOperation = {id:crypto.randomUUID(),at:new Date().toISOString()};
   document.getElementById('savingsModalTitle').textContent = '✨ เปิดบัญชีออมทอง';
   document.getElementById('savEditId').value = '';
@@ -4725,7 +4741,6 @@ function openSavingsModal() {
   document.getElementById('savTopupPct').value = 100;
   document.getElementById('savingsSaveBtn').textContent = '✦ เปิดบัญชี';
   document.getElementById('savingsModal').classList.add('open');
-  const draft = JSON.parse(localStorage.getItem('gd_savings_account_draft') || 'null');
   if (draft?.status === 'unconfirmed' && !draft.editId) {
     savingsAccountOperation = draft.operation;
     document.getElementById('savCustomer').value = draft.customer;
@@ -4777,9 +4792,9 @@ async function confirmSavings() {
     const customerChange = savingsCustomerChange(account,editId?null:{id:operation.id,type:'savings',item:'เปิดบัญชีออมทอง',amount:0,date:operation.at});
     operation.customerId = account.customerId;
     const draft = {status:'unconfirmed',editId,operation,customer,phone,period,topupPct};
-    localStorage.setItem('gd_savings_account_draft',JSON.stringify(draft));
+    await savingsRecovery.write('gd_savings_account_draft',draft);
     await commitSavingsChange(account,[],[customerChange],operation.id);
-    try { localStorage.setItem('gd_savings_account_draft',JSON.stringify({...draft,status:'confirmed'})); } catch {}
+    try { await savingsRecovery.write('gd_savings_account_draft',{...draft,status:'confirmed'}); } catch {}
     closeModal('savingsModal'); renderSavings(); renderCRM();
     if (editId) showToast('ฐานข้อมูลบันทึกการแก้ไขบัญชีออมทองแล้ว','success');
     else showSavingsSummary(account.id,'open');
@@ -4843,9 +4858,12 @@ function calcSavPay() {
   }
 }
 
-function addSavingsPayment(id) {
+async function addSavingsPayment(id) {
   if (!requirePerm('savings', 'ไม่มีสิทธิ์บันทึกยอดออม')) return;
   if (!requireSavingsReady()) return;
+  let draft;
+  try { draft = await savingsRecovery.read('gd_savings_payment_draft'); }
+  catch { showToast('อ่านรายการรอบันทึกไม่ได้ กรุณาสำรองก่อนลองใหม่','error'); return; }
   const sv = savingsAccounts.find(x=>x.id===id);
   if (!sv) return;
   savingsPaymentOperation = {id:crypto.randomUUID(),accountId:id,paymentId:'svp_'+crypto.randomUUID(),at:new Date().toISOString()};
@@ -4860,7 +4878,7 @@ function addSavingsPayment(id) {
   document.getElementById('savPaySaveBtn').textContent = '✓ บันทึก + แสดงสรุป';
   document.getElementById('savPayInfo').innerHTML = `<strong>${sv.customer}</strong> &nbsp;·&nbsp; ออมแล้ว <strong>${sv.saved.toLocaleString()} บาท</strong> (${sv.payments.length} งวด)`;
   document.getElementById('savPayModal').classList.add('open');
-  const draft = JSON.parse(localStorage.getItem('gd_savings_payment_draft') || 'null');
+  document.getElementById('savPaySaveBtn').disabled = false;
   if (draft?.accountId === id && draft.status === 'unconfirmed' && !draft.editPaymentId) {
     savingsPaymentOperation = draft;
     document.getElementById('savPayDeposit').value = draft.deposit;
@@ -4918,9 +4936,16 @@ async function confirmSavingsPayment() {
   if (operation.editPaymentId && !oldPayment) { showToast('ไม่พบงวดเดิม ระบบไม่เขียนทับข้อมูล','error');return; }
   const paymentId = operation.paymentId;
   const changedAt = operation.at;
+  const confirmedPayment = !operation.editPaymentId && sv.payments.find(p=>p.id===paymentId);
+  if (confirmedPayment && (confirmedPayment.deposit !== deposit || confirmedPayment.bonus !== bonus || confirmedPayment.date !== paymentDate || confirmedPayment.goldPrice !== goldPrice)) {
+    showToast('รายการนี้มีในฐานข้อมูลแล้ว ห้ามเปลี่ยนยอดขณะลองบันทึกซ้ำ กรุณาตรวจงวดเดิมก่อน','error');
+    return;
+  }
   Object.assign(operation,{status:'unconfirmed',deposit,topupPct,dateInput:paymentDateInput,goldPrice});
-  try { localStorage.setItem('gd_savings_payment_draft',JSON.stringify(operation)); }
+  saveBtn.disabled = true;
+  try { await savingsRecovery.write('gd_savings_payment_draft',operation); }
   catch { showToast('สร้างรายการสำรองไม่ได้ กรุณาดาวน์โหลดสำรองและตรวจพื้นที่ในเครื่องก่อนบันทึก','error');return; }
+  finally { saveBtn.disabled = false; }
   if (!requirePerm('savings','ไม่มีสิทธิ์บันทึกยอดออม',true) || !requireSavingsReady()) return;
   const payment = {
     id: paymentId,
@@ -4985,9 +5010,10 @@ async function confirmSavingsPayment() {
       }});
     }
     await commitSavingsChange(next,[paymentId],extras,operation.id);
-    try { localStorage.setItem('gd_savings_payment_draft',JSON.stringify({...operation,status:'confirmed'})); } catch {}
+    try { await savingsRecovery.write('gd_savings_payment_draft',{...operation,status:'confirmed'}); } catch {}
     closeModal('savPayModal');
     renderSavings();
+    showToast('ฐานข้อมูลบันทึกยอดออมแล้ว','success');
     showSavingsSummary(id, editIndexRaw === '' ? 'payment' : 'view');
   } catch (err) {
     console.error('Savings payment save failed:', err);
