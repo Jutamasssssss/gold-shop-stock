@@ -294,6 +294,10 @@ $('settlementForm').addEventListener('submit',async e=>{
  if(m>0&&sums({...r,events:[...r.events,event]}).credit>0){$('settlementError').textContent='ยอดจ่ายเกินยอดค้างชำระตามใบล็อกหรือใบรับจริง กรุณาตรวจสอบ';return;}
  if(!event.ref){$('settlementError').textContent='กรุณาระบุเอกสารอ้างอิง';return;}
  if(r.events.some(x=>x.ref.toLowerCase()===event.ref.toLowerCase()&&x.date===event.date&&x.grams===event.grams&&x.money===event.money)){$('settlementError').textContent='พบรายการรับ / จ่ายนี้แล้ว กรุณาตรวจสอบก่อนบันทึกซ้ำ';return;}
+ const receiptWarnings=[];
+ if(g>b.g||(g&&b.qtyKnown&&event.qty>b.qtyLeft))receiptWarnings.push('ยอดรับครั้งนี้เกินจำนวนหรือน้ำหนักที่ยังค้างรับ');
+ if(g&&r.events.some(x=>x.grams>0&&x.ref.trim().toLowerCase()===event.ref.toLowerCase()))receiptWarnings.push('เลขที่ใบรับนี้เคยบันทึกรับทองแล้ว');
+ if(receiptWarnings.length&&!confirm(receiptWarnings.join('\n')+'\nการบันทึกนี้จะเพิ่มรายการใหม่ ไม่ใช่แก้รายการเดิม และจะเพิ่มยอดทองกับยอดตามใบรับ\nยืนยันว่าเป็นการรับทองเพิ่มอีกครั้งจริงหรือไม่?')){$('settlementError').textContent='ยังไม่ได้บันทึกเพิ่ม กรุณาตรวจประวัติรับทองก่อน';return;}
  if(!await persist(records.map(x=>x.id===r.id?{...x,events:[...x.events,event]}:x))){$('settlementError').textContent=saveError||'กำลังบันทึก กรุณารอสักครู่';return;}
  render();refreshWork(r.id);toast('บันทึกน้ำหนักและยอดเอกสารรับจริงในงานเดิมแล้ว');
 });
@@ -514,8 +518,8 @@ $('supplierName').insertAdjacentHTML('afterend','<select id="supplierChoice" req
 function syncSupplier(){const other=$('supplierChoice').value==='other';$('supplierOtherWrap').hidden=!other;$('supplierOther').required=other;$('supplierName').value=other?$('supplierOther').value.trim():$('supplierChoice').value;}
 function resetSupplier(){$('supplierChoice').value='';$('supplierOther').value='';syncSupplier();}
 $('supplierChoice').addEventListener('change',syncSupplier);$('supplierOther').addEventListener('input',syncSupplier);
-function receiptState(r){const b=sums(r);return b.g===0&&!b.over&&!b.qtyMismatch?'รับทองแล้ว':'ค้างรับทอง';}
-function paymentState(r){return sums(r).m<=0?'จ่ายเงินแล้ว':'ค้างชำระ';}
+function receiptState(r){const b=sums(r);return b.over?'รับทองเกิน / รอตรวจสอบ':b.qtyMismatch?'จำนวนรับไม่ตรง / รอตรวจสอบ':b.g===0?'รับทองแล้ว':'ค้างรับทอง';}
+function paymentState(r){const b=sums(r);return b.over||b.qtyMismatch?'รอตรวจสอบยอดชำระ':b.m<=0?'จ่ายเงินแล้ว':'ค้างชำระ';}
 function lockStatusBadges(r){const received=receiptState(r),paid=paymentState(r),b=sums(r);return `<div class="lock-statuses"><span class="status ${received==='รับทองแล้ว'?'done':'partial'}">${received}</span><span class="status ${paid==='จ่ายเงินแล้ว'?'done':''}">${paid}</span>${b.credit?'<span class="status">จ่ายเกิน '+money(b.credit/100)+' บาท · รอเคลียร์</span>':''}</div>`;}
 $('detailInfo').insertAdjacentHTML('beforebegin','<div id="receiptStatus" aria-live="polite"></div>');
 $('fillRemaining').remove();
@@ -538,7 +542,11 @@ function profitForSale(s){
  // Returned stock keeps its supplier liability; only the active weight bears sales cost.
  const goldKnown=b.locks.every(r=>Number.isSafeInteger(r.fee)&&r.fee>=0&&r.fee<=r.total),receipts=b.locks.flatMap(r=>r.events.filter(e=>e.grams>0)),receiptFeesKnown=receipts.every(e=>Number.isSafeInteger(e.receiptFee)&&e.receiptFee>=0&&e.receiptFee<=e.invoiceAmount);
  const ratio=b.locked?Math.min(1,active.g/b.locked):0,goldCost=b.locks.reduce((n,r)=>n+r.total-(r.fee||0),0),invoiceGold=b.invoice-receipts.reduce((n,e)=>n+(e.receiptFee||0),0),allocatedLockCost=goldKnown?Math.round(goldCost*ratio):null,allocatedInvoice=Math.round(invoiceGold*ratio),cost=laborKnown&&goldKnown?allocatedLockCost+laborCost:null,actualCost=actualReady&&laborKnown&&receiptFeesKnown?allocatedInvoice+laborCost:null;
- return {sale:active,originalSale:s,b,laborCost,allocatedLockCost,cost,expected:complete&&cost!==null?active.total-cost:null,actualCost,actual:actualCost!==null?active.total-actualCost:null,receipt:b.locks.length?(received?'รับทองแล้ว':'ค้างรับทอง'):'ยังไม่โทรล็อก',payment:b.locks.length?(b.toPay===0?(complete?'จ่ายเงินแล้ว':'จ่ายใบล็อกแล้ว / รอล็อกเพิ่ม'):'ค้างชำระ'):'ยังไม่โทรล็อก'};
+ // Receipt status follows supplier locks, independently of whether the sale is fully locked.
+ const receiptBalances=b.locks.map(sums),receiptOver=receiptBalances.some(r=>r.over>0),receiptMismatch=receiptBalances.some(r=>r.qtyMismatch);
+ const receipt=!b.locks.length?'ยังไม่โทรล็อก':receiptOver?'รับทองเกิน / รอตรวจสอบ':receiptMismatch?'จำนวนรับไม่ตรง / รอตรวจสอบ':b.toReceive===0?'รับทองแล้ว':'ค้างรับทอง';
+ const payment=!b.locks.length?'ยังไม่โทรล็อก':receiptOver||receiptMismatch?'รอตรวจสอบยอดชำระ':b.toPay===0?(complete?'จ่ายเงินแล้ว':'จ่ายใบล็อกแล้ว / รอล็อกเพิ่ม'):'ค้างชำระ';
+ return {sale:active,originalSale:s,b,laborCost,allocatedLockCost,cost,expected:complete&&cost!==null?active.total-cost:null,actualCost,actual:actualCost!==null?active.total-actualCost:null,receipt,payment};
 }
 function reportData(){const month=$('reportMonth').value;return sales.filter(s=>activeSale(s).qty>0&&(!month||s.date?.startsWith(month))).map(profitForSale).sort((a,b)=>(b.sale.date+b.sale.time).localeCompare(a.sale.date+a.sale.time)||a.sale.ref.localeCompare(b.sale.ref));}
 function updateProfitCards(prefix,rows){
