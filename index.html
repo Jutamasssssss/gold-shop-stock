@@ -668,13 +668,18 @@
         <div id="selectedItem" style="display:none;">
           <div class="price-preview" id="salePreview"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label for="saleUnitPrice">ราคาขายจริง/ชิ้น (บาท)</label>
+              <input type="number" id="saleUnitPrice" min="0.01" step="0.01" inputmode="decimal" oninput="updateSalePreview()">
+              <div id="salePriceError" role="alert" style="color:var(--red);font-size:12px;min-height:18px;margin-top:4px;"></div>
+            </div>
             <div class="form-group">
               <label>จำนวนที่ขาย</label>
-              <input type="number" id="saleQty" value="1" min="1" onchange="updateSalePreview()">
+              <input type="number" id="saleQty" value="1" min="1" step="1" oninput="updateSalePreview()">
             </div>
             <div class="form-group">
               <label>ส่วนลด (บาท)</label>
-              <input type="number" id="saleDiscount" value="0" min="0" onchange="updateSalePreview()">
+              <input type="number" id="saleDiscount" value="0" min="0" step="0.01" oninput="updateSalePreview()">
             </div>
             <div class="form-group">
               <label>ช่องทาง</label>
@@ -696,7 +701,7 @@
             </div>
           </div>
           <div style="display:flex;gap:8px;margin-top:16px;">
-            <button class="btn btn-primary" onclick="confirmSale()" style="flex:1;">✓ ยืนยันขาย</button>
+            <button class="btn btn-primary" id="saleConfirmButton" onclick="confirmSale()" style="flex:1;">✓ ยืนยันขาย</button>
             <button class="btn btn-ghost" onclick="cancelSale()">ยกเลิก</button>
           </div>
         </div>
@@ -3486,26 +3491,48 @@ function searchForSale() {
 
 function selectSaleProduct(code) {
   selectedSaleProduct = products.find(p=>p.code===code);
+  if (!selectedSaleProduct) return;
   document.getElementById('saleSearch').value = selectedSaleProduct.name + ' (' + selectedSaleProduct.code + ')';
   document.getElementById('saleResults').classList.remove('open');
   document.getElementById('saleQty').value = 1;
   document.getElementById('saleDiscount').value = 0;
+  document.getElementById('saleUnitPrice').value = sellPrice(getAvgCost(selectedSaleProduct), getProductSaleFee(selectedSaleProduct));
   document.getElementById('selectedItem').style.display = 'block';
   updateSalePreview();
+}
+
+function readSaleAmounts(p) {
+  const priceInput = document.getElementById('saleUnitPrice');
+  const qtyInput = document.getElementById('saleQty');
+  const discountInput = document.getElementById('saleDiscount');
+  const sp = Number(priceInput.value);
+  const qty = Number(qtyInput.value);
+  const discount = Number(discountInput.value);
+  if (!priceInput.value || !Number.isFinite(sp) || sp <= 0 || !priceInput.validity.valid)
+    return { error: 'กรุณาระบุราคาขายจริงต่อชิ้นเป็นจำนวนเงินมากกว่า 0 บาท' };
+  if (!Number.isInteger(qty) || qty < 1)
+    return { error: 'กรุณาระบุจำนวนที่ขายเป็นจำนวนเต็มอย่างน้อย 1 ชิ้น' };
+  if (qty > getProductQty(p))
+    return { error: 'สต็อกไม่พอค่ะ มีแค่ ' + getProductQty(p) + ' ชิ้น' };
+  if (!discountInput.value || !Number.isFinite(discount) || discount < 0 || !discountInput.validity.valid || discount >= sp * qty)
+    return { error: 'ส่วนลดต้องไม่ติดลบ และต้องน้อยกว่ายอดขายก่อนหักส่วนลด' };
+  const avgCost = getAvgCost(p);
+  const total = Math.round((sp * qty - discount) * 100) / 100;
+  const profit = Math.round((total - avgCost * qty - getProductSaleFee(p) * qty) * 100) / 100;
+  return { sp, qty, discount, avgCost, total, profit };
 }
 
 function updateSalePreview() {
   if (!selectedSaleProduct) return;
   const p = selectedSaleProduct;
-  const qty = parseInt(document.getElementById('saleQty').value)||1;
-  const discount = parseFloat(document.getElementById('saleDiscount').value)||0;
-  const availQty = getProductQty(p);
-  if (qty > availQty) { document.getElementById('saleQty').value = availQty; return; }
-  
-  const avgCost = getAvgCost(p);
-  const sp = sellPrice(avgCost, getProductSaleFee(p));
-  const total = sp * qty - discount;
-  const profit = total - avgCost*qty - (getProductSaleFee(p))*qty;
+  const amounts = readSaleAmounts(p);
+  document.getElementById('salePriceError').textContent = amounts.error || '';
+  document.getElementById('saleConfirmButton').disabled = !!amounts.error;
+  if (amounts.error) {
+    document.getElementById('salePreview').innerHTML = '';
+    return;
+  }
+  const { sp, qty, discount, total, profit } = amounts;
   
   // FIFO — show which lot will be cut
   let remaining = qty;
@@ -3532,17 +3559,15 @@ function confirmSale() {
   if (!requirePerm('sell', 'ไม่มีสิทธิ์บันทึกขาย')) return;
   if (!selectedSaleProduct) return;
   const p = selectedSaleProduct;
-  const qty = parseInt(document.getElementById('saleQty').value)||1;
-  const discount = parseFloat(document.getElementById('saleDiscount').value)||0;
+  const amounts = readSaleAmounts(p);
+  if (amounts.error) { updateSalePreview(); alert(amounts.error); return; }
+  const { sp, qty, discount, avgCost, total, profit } = amounts;
   const channel = document.getElementById('saleChannel').value;
   const customer = document.getElementById('saleCustomer').value.trim();
   const customerPhone = document.getElementById('salePhone').value.trim();
-  const availQty = getProductQty(p);
-  if (qty > availQty) { alert('สต็อกไม่พอค่ะ มีแค่ '+availQty+' ชิ้น'); return; }
   
   // FIFO deduction
   let remaining = qty;
-  const avgCost = getAvgCost(p);
   for (let i=0; i<p.lots.length && remaining>0; i++) {
     const use = Math.min(p.lots[i].qty, remaining);
     p.lots[i].qty -= use;
@@ -3550,9 +3575,6 @@ function confirmSale() {
   }
   p.lots = p.lots.filter(l=>l.qty>0);
   
-  const sp = sellPrice(avgCost, getProductSaleFee(p));
-  const total = sp*qty - discount;
-  const profit = total - avgCost*qty - (getProductSaleFee(p))*qty;
   const txnNo = nextTxnNo();
   const customerRecord = customer || customerPhone ? upsertCustomerRecord(customer, customerPhone) : null;
   
@@ -3567,6 +3589,7 @@ function confirmSale() {
     weightLabel:WEIGHT_LABELS[p.weight]||p.weight,
     qty,
     cost:avgCost,
+    unitPrice:sp,
     total,
     profit,
     discount,
