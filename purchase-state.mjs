@@ -9,6 +9,13 @@ export function stable(value) {
 }
 
 function fail(message) { throw new Error(message); }
+function checkEventChange(change) {
+  if (!change?.id || !change.eventId || !['edit','void','restore'].includes(change.action) || !change.reason?.trim() || !Number.isFinite(Date.parse(change.at)) || change.before?.id !== change.eventId || change.after?.id !== change.eventId) fail('ประวัติแก้ไขรับทองไม่ครบ');
+  const {before,after,action}=change;
+  if (action==='edit' && (before.voided || after.voided)) fail('ต้องกู้คืนรายการก่อนแก้ไข');
+  if (action==='void' && (before.voided || stable(after)!==stable({...before,voided:true}))) fail('ข้อมูลยกเลิกรายการไม่ตรงต้นฉบับ');
+  if (action==='restore' && (!before.voided || stable(after)!==stable({...before,voided:false}))) fail('ข้อมูลกู้คืนรายการไม่ตรงต้นฉบับ');
+}
 export function validateState(state) {
   if (!state || !Array.isArray(state.sales) || !Array.isArray(state.records)) fail('รูปแบบข้อมูลไม่ถูกต้อง');
   for (const key of ['sales', 'records']) {
@@ -46,6 +53,19 @@ export function validateState(state) {
           if (!event.id || eventIds.has(event.id) || !Number.isSafeInteger(event.grams) || event.grams < 0 || !Number.isSafeInteger(event.money) || event.money < 0 || !event.date || !event.time) fail('ประวัติรับทองหรือชำระเงินไม่ถูกต้อง: ' + row.ref);
           eventIds.add(event.id);
         }
+        if (row.eventHistory !== undefined && !Array.isArray(row.eventHistory)) fail('ประวัติแก้ไขรับทองไม่ถูกต้อง');
+        const revisions=new Map(),historyIds=new Set();
+        for (const change of row.eventHistory || []) {
+          checkEventChange(change);
+          if (historyIds.has(change.id) || !eventIds.has(change.eventId)) fail('ประวัติแก้ไขซ้ำหรือไม่พบรายการ');
+          historyIds.add(change.id);
+          if (revisions.has(change.eventId) && stable(revisions.get(change.eventId))!==stable(change.before)) fail('ประวัติแก้ไขรับทองขาดช่วง');
+          revisions.set(change.eventId,change.after);
+        }
+        for (const event of row.events) {
+          if (revisions.has(event.id) && stable(revisions.get(event.id))!==stable(event)) fail('ยอดรับทองไม่ตรงกับประวัติแก้ไข');
+          if (event.voided && !revisions.has(event.id)) fail('ไม่พบประวัติยกเลิกรายการ');
+        }
       }
     }
   }
@@ -71,8 +91,16 @@ export function changesBetween(before, after) {
         if (stable(original(row)) !== stable(original(replacement))) fail('งานที่มีประวัติคืนสินค้าไม่สามารถเปลี่ยนรายการขายต้นฉบับ');
       }
       if (key === 'records') {
+        const oldHistory=row.eventHistory||[],nextHistory=replacement.eventHistory||[];
+        for(let i=0;i<oldHistory.length;i++)if(stable(oldHistory[i])!==stable(nextHistory[i]))fail('ไม่อนุญาตให้ลบหรือเขียนทับประวัติแก้ไข');
+        const expected=new Map(row.events.map(event=>[event.id,event]));
+        for(const change of nextHistory.slice(oldHistory.length)){
+          checkEventChange(change);
+          if(!expected.has(change.eventId)||stable(expected.get(change.eventId))!==stable(change.before))fail('รายการถูกแก้ไขไปแล้ว กรุณาเปิดข้อมูลล่าสุด');
+          expected.set(change.eventId,change.after);
+        }
         for (let i = 0; i < row.events.length; i++) {
-          if (stable(row.events[i]) !== stable(replacement.events[i])) fail('ไม่อนุญาตให้ลบหรือเขียนทับประวัติรับทองและชำระเงิน');
+          if (stable(expected.get(row.events[i].id)) !== stable(replacement.events[i])) fail('ไม่อนุญาตให้ลบหรือเขียนทับประวัติรับทองและชำระเงินโดยไม่มีประวัติแก้ไข');
         }
       }
     }
