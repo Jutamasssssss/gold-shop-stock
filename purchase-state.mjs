@@ -32,6 +32,7 @@ export function validateState(state) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date) || !/^\d{2}:\d{2}$/.test(row.time)) fail('วันที่หรือเวลาไม่ครบ: ' + row.ref);
       if (!['jewelry', 'bar'].includes(row.type)) fail('ประเภททองไม่ถูกต้อง: ' + row.ref);
       if (key === 'sales') {
+        if (row.legacyLaborCost != null && (!Number.isSafeInteger(row.legacyLaborCost) || row.legacyLaborCost < 0)) fail('ต้นทุนค่ากำเหน็จรวมไม่ถูกต้อง: ' + row.ref);
         for (const line of row.lines || []) {
           if (line.laborCost != null && (!Number.isSafeInteger(line.laborCost) || line.laborCost < 0)) fail('ต้นทุนค่ากำเหน็จไม่ถูกต้อง: ' + row.ref);
         }
