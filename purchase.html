@@ -221,7 +221,7 @@ function render(){
  const history=records.flatMap(r=>activeEvents(r).filter(e=>e.date).map(e=>({...e,purchase:r.ref}))).reverse().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,3);
  $('activity').innerHTML=history.length?history.map(e=>`<div class="audit-item"><strong>${esc(e.purchase)}</strong> · ${thaiDate(e.date)} ${esc(e.time)}<div>รับ ${weight(e.grams/10000)} กรัม · จ่าย ${money(e.money/100)} บาท</div><small>${esc(e.ref)}</small></div>`).join(''):'<div class="audit-item">ยังไม่มีประวัติรับทองหรือจ่ายเงินในงานที่บันทึก</div>';
  $('printDate').textContent='พิมพ์: '+thaiDate(today())+' '+nowTime()+' น. · ประเภท: '+(currentType==='all'?'ทั้งหมด':goldLabel(currentType))+' · สถานะ: '+($('statusFilter').selectedOptions[0].textContent);
- renderWorkflow();renderProfitReports();renderDeliverySummary();
+ renderWorkflow();renderProfitReports();renderDeliverySummary();renderSellerReport();
 }
 function toast(msg){$('toast').textContent=msg;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('toast').textContent='',4500);}
 function calculate(){
@@ -468,7 +468,7 @@ $('saleWeight').addEventListener('input',()=>{
 $('lockSale').addEventListener('change',syncLockSale);
 ['flowSearch','flowType','flowStatus'].forEach(id=>$(id).addEventListener('input',renderWorkflow));
 $('flowRows').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.newWork)openSale();else if(b.dataset.editSale)openSale(b.dataset.editSale);else if(b.dataset.addSale)openSale(null,b.dataset.addSale);else if(b.dataset.link)openLink(b.dataset.link);else if(b.dataset.lockSale){openSale(b.dataset.lockSale);scrollWork('jobLock');}else if(b.dataset.detail)openWorkForLock(b.dataset.detail);});
-function selectView(view){['workflow','statement','report','delivery','trash'].forEach(id=>{if($(id+'View'))$(id+'View').hidden=id!==view;});document.querySelectorAll('[data-view]').forEach(x=>{x.classList.toggle('selected',x.dataset.view===view);x.setAttribute('aria-selected',String(x.dataset.view===view));});}
+function selectView(view){['workflow','statement','report','delivery','trash','sellers'].forEach(id=>{if($(id+'View'))$(id+'View').hidden=id!==view;});document.querySelectorAll('[data-view]').forEach(x=>{x.classList.toggle('selected',x.dataset.view===view);x.setAttribute('aria-selected',String(x.dataset.view===view));});document.querySelector('.main').classList.toggle('seller-report-active',view==='sellers');document.querySelector('.heading h1').textContent=view==='sellers'?'สรุปยอดขายรายคน':'งานขาย · ล็อก · รับทอง';document.querySelector('.heading .actions').hidden=view==='sellers';document.querySelector('.preview-actions').hidden=view==='sellers';const tab=document.querySelector('[data-view="'+view+'"]');if(tab&&view==='sellers')tab.parentElement.scrollLeft=tab.offsetLeft-tab.parentElement.offsetLeft;}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>selectView(b.dataset.view)));
 // All three stages live inside a single job editor; only explicit saves persist data.
 $('jobSale').append($('saleForm'));
@@ -724,7 +724,85 @@ const profitHeaders=$('reportView').querySelectorAll('thead th');profitHeaders[2
 $('flowStatus').insertAdjacentHTML('beforeend','<option value="surplus">ทองล็อกเกินยอดขายสุทธิ</option>');
 for(const prefix of ['overview','report']){$(prefix+'Cost').previousElementSibling.textContent='ต้นทุนขายรวมที่ระบุแล้ว';$(prefix+'Cost').nextElementSibling.textContent='เฉพาะต้นทุนทองจัดสรร + กำเหน็จชิ้นที่ขาย';}
 $('reportView').querySelector('.report-note:not(#reportPeriod)').textContent='กำไรขาย = ยอดขายสุทธิ − ต้นทุนทองที่ล็อกตามสัดส่วนน้ำหนัก − ต้นทุนค่ากำเหน็จชิ้นที่ขาย · ไม่หักค่ากำเหน็จ/ค่าใช้จ่ายร้านส่ง · กำไรตามใบรับใช้ยอดใบรับหักค่าใช้จ่ายร้านส่งออกก่อน · ไม่รวมสินค้าคืน · ต้นทุนที่ยังไม่ระบุจะแสดงรอต้นทุนครบ (ไม่มีค่าใช้จ่ายให้กรอก 0)';
+document.head.insertAdjacentHTML('beforeend',`<style>
+.seller-toolbar{display:grid;grid-template-columns:180px minmax(160px,1fr) 210px auto;gap:12px;align-items:end;margin:20px 0}.seller-toolbar .actions{justify-content:flex-end}.seller-table{min-width:860px}.seller-table td:first-child{white-space:normal;min-width:170px;overflow-wrap:anywhere}.seller-table td small{font-size:11px}.seller-detail-table{min-width:1100px}.seller-detail-table td{white-space:normal;max-width:220px;overflow-wrap:anywhere}.seller-detail-table .num{white-space:nowrap}.seller-section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:24px 0 12px}.seller-section-title p{color:var(--muted);font-size:12px}.seller-details{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}.seller-details summary{cursor:pointer;font-size:17px;font-weight:600;margin-bottom:16px}.seller-returned{color:var(--muted);background:#f8f5f5}.seller-empty{padding:30px 16px;text-align:center;color:var(--muted)}.seller-report-active .audit,.seller-report-active #downloadCloud,.seller-report-active #importBackup,.seller-report-active label[for="importBackup"]{display:none}
+@media(max-width:1000px){.seller-toolbar{grid-template-columns:1fr 1fr}.seller-toolbar .actions{justify-content:flex-start}}@media(max-width:700px){.seller-toolbar{grid-template-columns:minmax(0,1fr)}.seller-toolbar input,.seller-toolbar select{min-height:44px}.seller-toolbar .actions{flex-wrap:wrap}.seller-section-title{align-items:flex-start;flex-direction:column}.seller-table{font-size:12px}.seller-details summary{font-size:16px}}@media print{.seller-toolbar,.seller-open,.seller-details summary{display:none!important}.seller-table,.seller-detail-table{min-width:0;table-layout:fixed;font-size:9px}.seller-table td:first-child{min-width:0}.seller-table td,.seller-detail-table td,.seller-table th,.seller-detail-table th{white-space:normal!important;overflow-wrap:anywhere}.seller-details{break-before:page}.seller-table td small{font-size:8px}}
+@media screen and (max-width:700px){.seller-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.seller-toolbar>div:nth-child(n+3){grid-column:1/-1}.seller-table{min-width:0;display:block;white-space:normal}.seller-table thead{display:none}.seller-table tbody,.seller-table tfoot{display:block}.seller-table tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid var(--line);padding:10px}.seller-table td{display:block;border:0;min-width:0!important;white-space:normal;text-align:left;padding:8px;font-size:14px}.seller-table td:first-child,.seller-table .seller-open{grid-column:1/-1}.seller-table td:not(:first-child):not(:last-child):before{content:attr(data-label);display:block;color:var(--muted);font-size:11px;font-weight:400;margin-bottom:4px}.seller-table .seller-open{padding-block:0;text-align:right}.seller-table tfoot tr{background:#f0f1eb}.seller-table tfoot td{background:transparent}.seller-table tfoot .seller-open{display:none}}
+</style>`);
+document.querySelector('.view-tabs').insertAdjacentHTML('beforeend','<button data-view="sellers" role="tab" aria-selected="false"><i data-lucide="users"></i>ยอดขายรายคน</button>');
+document.querySelector('[data-view="sellers"]').addEventListener('click',()=>{selectView('sellers');history.replaceState(null,'','#seller-report');});
+$('reportView').insertAdjacentHTML('afterend',`<section id="sellersView" hidden aria-labelledby="sellerReportHeading">
+ <h2 id="sellerReportHeading">ยอดขายและกำไรรายพนักงาน</h2>
+ <p class="report-note">แหล่งข้อมูล: งานขายลูกค้าในเมนูตัดซื้อทองร้านส่ง · ไม่รวมรายการขายจากเมนูบันทึกขายอื่น</p>
+ <div class="seller-toolbar"><div><label for="sellerMonth">เดือนที่ขาย</label><input id="sellerMonth" type="month" required></div><div><label for="sellerFilter">พนักงานขาย</label><select id="sellerFilter"><option value="">ทุกคน</option></select></div><div><label for="sellerBasis">กำไรอ้างอิงต้นทุน</label><select id="sellerBasis"><option value="lock">ใบล็อกทอง</option><option value="receipt">ใบรับทองจริง</option></select></div><div class="actions"><button id="exportSellers" type="button" title="ดาวน์โหลดสรุปรายคน CSV"><i data-lucide="download"></i>สรุป CSV</button><button id="printSellers" class="icon" type="button" title="พิมพ์สรุปยอดขาย" aria-label="พิมพ์สรุปยอดขาย"><i data-lucide="printer"></i></button></div></div>
+ <p id="sellerPeriod" class="report-note"></p><p id="sellerReportStatus" role="status" class="report-note">กำลังเตรียมรายงาน…</p>
+ <div id="sellerReportContent" hidden><div class="metrics profit-summary">
+ <div class="metric total"><div class="label">ขายสุทธิ</div><div class="value" id="sellerQty">—</div><div class="detail" id="sellerJobCount"></div></div>
+ <div class="metric receive"><div class="label">ยอดขายสุทธิ</div><div class="value" id="sellerRevenue">—</div><div class="detail">บาท · ไม่รวมสินค้าคืน</div></div>
+ <div class="metric paid"><div class="label" id="sellerProfitLabel">กำไรตามใบล็อก</div><div class="value" id="sellerProfit">—</div><div class="detail" id="sellerKnown"></div></div>
+ <div class="metric payment"><div class="label">รอต้นทุนครบ</div><div class="value" id="sellerPending">—</div><div class="detail" id="sellerPendingMoney"></div></div></div>
+ <p class="report-note">กำไร = ราคาขาย − ต้นทุนทองจัดสรรตามน้ำหนัก − ต้นทุนค่ากำเหน็จของชิ้นที่ขาย · ไม่หักค่าใช้จ่ายร้านส่ง · สินค้าคืนไม่นับรวมยอดขายและกำไร · รายการรอต้นทุนยังไม่รวมกำไร</p>
+ <p id="sellerIssues" class="notice" hidden></p>
+ <div class="seller-section-title"><h3>ยอดขายรายคน</h3><p id="sellerReturned"></p></div>
+ <div class="tablewrap"><table class="seller-table"><thead><tr><th>พนักงานขาย</th><th class="num">ชิ้นขายสุทธิ</th><th class="num">ยอดขาย (บาท)</th><th class="num">กำไร (บาท)</th><th class="num">รอต้นทุน</th><th class="num">คืนสินค้า</th><th class="seller-open"></th></tr></thead><tbody id="sellerRows"></tbody><tfoot id="sellerTotals"></tfoot></table></div>
+ <details class="seller-details" id="sellerDetails"><summary id="sellerDetailsTitle">รายการขายรายชิ้น</summary><div class="actions" style="margin-bottom:12px"><button id="exportSellerLines" type="button"><i data-lucide="download"></i>รายการย่อย CSV</button></div><div class="tablewrap"><table class="seller-detail-table"><thead><tr><th>วันที่ / งาน</th><th>พนักงาน / ลูกค้า</th><th>สินค้า / ช่องทาง</th><th class="num">ชิ้น / กรัม</th><th class="num">ราคาขาย</th><th class="num">ต้นทุนขาย</th><th class="num">กำไร</th><th>สถานะ</th></tr></thead><tbody id="sellerLineRows"></tbody></table></div></details></div>
+</section>`);
+const requestedSellerMonth=new URLSearchParams(location.search).get('month');
+$('sellerMonth').value=/^\d{4}-(0[1-9]|1[0-2])$/.test(requestedSellerMonth||'')?requestedSellerMonth:today().slice(0,7);
+function sellerReportData(){return window.sellerReporting.buildSellerReport(sales.map(profitForSale),{month:$('sellerMonth').value,seller:$('sellerFilter').value,basis:$('sellerBasis').value});}
+function renderSellerReport(){
+ if(!$('sellersView')||!window.sellerReporting)return;
+ renderInlineSellers();
+ if(!$('sellerMonth').value){$('sellerReportContent').hidden=true;$('sellerReportStatus').textContent='กรุณาเลือกเดือนที่ขาย';return;}
+ try{
+  let report=sellerReportData();const selected=$('sellerFilter').value;
+  $('sellerFilter').innerHTML='<option value="">ทุกคน</option>'+report.choices.map(choice=>`<option value="${esc(choice.key)}">${esc(choice.name)}</option>`).join('');
+  $('sellerFilter').value=report.choices.some(choice=>choice.key===selected)?selected:'';
+  if(selected!==$('sellerFilter').value)report=sellerReportData();
+  const t=report.totals,amount=n=>n===null?'รอต้นทุนครบ':money(n/100),profit=g=>g.knownQty?money(g.profit/100):g.qty?'—':'0.00';
+  const period=new Intl.DateTimeFormat('th-TH',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(report.month+'-01T12:00:00Z'));
+  $('sellerPeriod').textContent=period+' · '+$('sellerFilter').selectedOptions[0].textContent+' · ตามวันที่ขายลูกค้า';
+  $('sellerReportContent').hidden=false;$('sellerReportStatus').textContent='';
+  $('sellerQty').textContent=t.qty.toLocaleString('th-TH')+' ชิ้น';$('sellerJobCount').textContent=t.jobs+' งาน · '+report.groups.length+' ผู้ขาย';
+  $('sellerRevenue').textContent=money(t.sales/100);$('sellerProfit').textContent=profit(t);$('sellerProfit').classList.toggle('red',t.profit<0);
+  $('sellerProfitLabel').textContent=report.basis==='receipt'?'กำไรตามใบรับจริง':'กำไรตามใบล็อก';
+  $('sellerKnown').textContent='บาท · คำนวณแล้ว '+t.knownQty+' / '+t.qty+' ชิ้น'+(t.pendingQty?' · กำไรยังไม่ครบ':'');
+  $('sellerPending').textContent=t.pendingQty+' ชิ้น';$('sellerPendingMoney').textContent='ยอดขาย '+money(t.pendingSales/100)+' บาท';
+  $('sellerReturned').textContent='คืนสินค้า '+t.returnedQty+' ชิ้น · '+money(t.returnedSales/100)+' บาท (ไม่รวมยอดสุทธิ)';
+  $('sellerIssues').hidden=!report.issues.length;$('sellerIssues').textContent=report.issues.length?'ยังไม่รวม '+report.issues.length+' งานที่ต้องตรวจข้อมูล: '+report.issues.map(issue=>issue.ref+' ('+issue.reason+')').join(' · '):'';
+  $('sellerRows').innerHTML=report.groups.length?report.groups.map(g=>`<tr><td><strong>${esc(g.seller)}</strong><small>${g.jobs} งาน</small></td><td class="num">${g.qty}</td><td class="num">${money(g.sales/100)}</td><td class="num ${g.profit<0?'red':''}"><strong>${profit(g)}</strong><small>${g.knownQty} ชิ้นคำนวณแล้ว</small></td><td class="num">${g.pendingQty} ชิ้น<small>${money(g.pendingSales/100)} บาท</small></td><td class="num">${g.returnedQty} ชิ้น<small>${money(g.returnedSales/100)} บาท</small></td><td class="seller-open"><button class="icon" data-seller-detail="${esc(g.key)}" title="ดูรายการของ ${esc(g.seller)}" aria-label="ดูรายการของ ${esc(g.seller)}"><i data-lucide="list"></i></button></td></tr>`).join(''):'<tr><td colspan="7" class="seller-empty">ไม่มีรายการขายในเดือนที่เลือก</td></tr>';
+  $('sellerTotals').innerHTML=`<tr><td>รวม ${report.groups.length} ผู้ขาย</td><td class="num">${t.qty}</td><td class="num">${money(t.sales/100)}</td><td class="num">${profit(t)}</td><td class="num">${t.pendingQty} ชิ้น</td><td class="num">${t.returnedQty} ชิ้น</td><td class="seller-open"></td></tr>`;
+  document.querySelectorAll('#sellerRows tr,#sellerTotals tr').forEach(row=>[...row.cells].forEach((cell,index)=>cell.dataset.label=['','ชิ้นขายสุทธิ','ยอดขาย (บาท)','กำไร (บาท)','รอต้นทุน','คืนสินค้า',''][index]));
+  $('sellerDetailsTitle').textContent='รายการขายรายชิ้น · '+report.lines.length+' รายการ';
+  $('sellerLineRows').innerHTML=report.lines.length?report.lines.map(line=>{const cost=report.basis==='receipt'?line.receiptCost:line.lockCost,gain=report.basis==='receipt'?line.actualProfit:line.lockProfit;return `<tr class="${line.returned?'seller-returned':''}"><td>${thaiDate(line.date)}<small>${esc(line.ref)} · ชิ้นที่ ${line.index+1}</small></td><td>${esc(line.seller)}<small>${esc(line.customer)}</small></td><td>${esc(line.item)}<small>${esc(line.channel||'ไม่ระบุช่องทาง')}${line.orderNumber?' · '+esc(line.orderNumber):''}</small></td><td class="num">${line.qty} ชิ้น<small>${weight(line.weight/10000)} กรัม</small></td><td class="num">${money(line.sales/100)}</td><td class="num">${line.returned?'ไม่นับรวม':amount(cost)}</td><td class="num ${gain<0?'red':''}">${line.returned?'ไม่นับรวม':amount(gain)}</td><td><span class="status ${line.returned?'':gain===null?'partial':'done'}">${line.returned?'คืนสินค้า':gain===null?'รอต้นทุนครบ':'คำนวณกำไรแล้ว'}</span></td></tr>`;}).join(''):'<tr><td colspan="8" class="seller-empty">ไม่มีรายการ</td></tr>';
+  if(window.lucide)lucide.createIcons();
+ }catch(error){$('sellerReportContent').hidden=true;$('sellerReportStatus').textContent='ยังสรุปยอดไม่ได้: '+error.message;}
+}
+['sellerMonth','sellerFilter','sellerBasis'].forEach(id=>$(id).addEventListener('input',renderSellerReport));
+$('sellerRows').addEventListener('click',event=>{const button=event.target.closest('[data-seller-detail]');if(!button)return;$('sellerFilter').value=button.dataset.sellerDetail;renderSellerReport();$('sellerDetails').open=true;$('sellerDetails').scrollIntoView({block:'start',behavior:'smooth'});});
+function exportSellerReport(detail=false){if(!$('sellerMonth').value||!window.sellerReporting)return;try{const report=sellerReportData(),url=URL.createObjectURL(new Blob([window.sellerReporting.sellerReportCsv(report,detail)],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='gold-sellers-'+report.month+(detail?'-details':'-summary')+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(error){toast(error.message);}}
+$('exportSellers').addEventListener('click',()=>exportSellerReport());$('exportSellerLines').addEventListener('click',()=>exportSellerReport(true));
+$('printSellers').addEventListener('click',()=>{$('printDate').textContent='สรุปยอดขายรายคน · '+$('sellerPeriod').textContent+' · '+$('sellerProfitLabel').textContent+' · พิมพ์ '+thaiDate(today());window.print();});
+function openSellerReportHash(){if(location.hash==='#seller-report')selectView('sellers');}
+window.addEventListener('hashchange',openSellerReportHash);openSellerReportHash();
+$('reportView').querySelector('.tablewrap').insertAdjacentHTML('beforebegin',`<section aria-labelledby="inlineSellersTitle"><div class="seller-section-title"><h3 id="inlineSellersTitle">สรุปยอดขายตามเซลล์</h3><button type="button" id="openSellerDetails"><i data-lucide="users"></i>ดูรายละเอียดรายคน</button></div><p id="inlineSellerStatus" role="status" class="report-note">กำลังเตรียมรายงาน</p><div class="tablewrap"><table><thead><tr><th>ชื่อเซลล์</th><th class="num">ชิ้นขายสุทธิ</th><th class="num">ยอดขาย (บาท)</th><th class="num">กำไรตามใบล็อก (บาท)</th><th class="num">กำไรตามใบรับจริง (บาท)</th></tr></thead><tbody id="inlineSellerRows"></tbody><tfoot id="inlineSellerTotals"></tfoot></table></div></section>`);
+function renderInlineSellers(){
+ if(!window.sellerReporting||!$('inlineSellerRows'))return;
+ const source=sales.map(profitForSale),month=$('reportMonth').value;
+ const locked=window.sellerReporting.buildSellerReport(source,{month}),received=window.sellerReporting.buildSellerReport(source,{month,basis:'receipt'});
+ const actual=new Map(received.groups.map(group=>[group.key,group]));
+ const gain=group=>`${group.knownQty?money(group.profit/100):group.qty?'—':'0.00'}${group.pendingQty?'<small>รอต้นทุน '+group.pendingQty+' ชิ้น</small>':''}`;
+ $('inlineSellerStatus').textContent=locked.issues.length?'ยังไม่รวมงานที่ต้องตรวจข้อมูล: '+locked.issues.map(issue=>issue.ref).join(' · '):'ขายสุทธิ '+locked.totals.qty+' ชิ้น · '+locked.groups.length+' ผู้ขาย · ไม่รวมสินค้าคืน';
+ $('inlineSellerRows').innerHTML=locked.groups.length?locked.groups.map(group=>`<tr><td>${esc(group.seller)}</td><td class="num">${group.qty}</td><td class="num">${money(group.sales/100)}</td><td class="num">${gain(group)}</td><td class="num">${gain(actual.get(group.key))}</td></tr>`).join(''):'<tr><td colspan="5">ไม่มีรายการขายในช่วงที่เลือก</td></tr>';
+ $('inlineSellerTotals').innerHTML=`<tr><td>รวม</td><td class="num">${locked.totals.qty}</td><td class="num">${money(locked.totals.sales/100)}</td><td class="num">${gain(locked.totals)}</td><td class="num">${gain(received.totals)}</td></tr>`;
+}
+$('reportMonth').addEventListener('input',renderInlineSellers);$('reportAllMonths').addEventListener('click',renderInlineSellers);
+$('openSellerDetails').addEventListener('click',()=>{$('sellerMonth').value=$('reportMonth').value||today().slice(0,7);$('sellerFilter').value='';renderSellerReport();selectView('sellers');history.replaceState(null,'','#seller-report');});
 render();if(window.lucide)lucide.createIcons();
+</script>
+<script type="module">
+import * as sellerReporting from './seller-report.mjs?v=seller-monthly-20261118';
+window.sellerReporting=sellerReporting;renderSellerReport();
 </script>
 <script type="module" src="purchase-cloud.js?v=profit-safety-20261118"></script>
 </body>
