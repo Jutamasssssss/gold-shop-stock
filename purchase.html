@@ -346,7 +346,8 @@ function activeSale(s){const returned=returnedIndexes(s),lines=saleLines(s).filt
 function saleBalance(s){
  const active=activeSale(s);
  const locks=records.filter(r=>r.saleId===s.id),locked=locks.reduce((n,r)=>n+r.g,0),received=locks.reduce((n,r)=>n+sums(r).got,0),cost=locks.reduce((n,r)=>n+r.total,0),paid=locks.reduce((n,r)=>n+sums(r).paid,0),toReceive=locks.reduce((n,r)=>n+sums(r).g,0),over=locks.reduce((n,r)=>n+sums(r).over,0),invoice=locks.reduce((n,r)=>n+sums(r).invoice,0),invoiceMismatch=locks.some(r=>sums(r).invoiceDiff!==0);
- const qtyKnown=locks.every(r=>Number.isSafeInteger(r.qty)&&r.qty>0),lockedQty=locks.reduce((n,r)=>n+(r.qty||0),0),receivedQty=locks.reduce((n,r)=>n+sums(r).gotQty,0),qtyMismatch=locks.some(r=>sums(r).qtyMismatch)||(qtyKnown&&!returnedIndexes(s).size&&locked>=s.g&&lockedQty!==s.qty);
+ // Supplier gold can consolidate several sold pieces; compare receipt counts only with its lock.
+ const qtyKnown=locks.every(r=>Number.isSafeInteger(r.qty)&&r.qty>0),lockedQty=locks.reduce((n,r)=>n+(r.qty||0),0),receivedQty=locks.reduce((n,r)=>n+sums(r).gotQty,0),qtyMismatch=locks.some(r=>sums(r).qtyMismatch);
  return {locks,locked,received,cost,paid,toLock:Math.max(0,active.g-locked),surplus:Math.max(0,locked-active.g),toReceive,toPay:locks.reduce((sum,r)=>sum+sums(r).m,0),over,invoice,invoiceMismatch,qtyKnown,lockedQty,receivedQty,toLockQty:qtyKnown?Math.max(0,active.qty-lockedQty):null,qtyMismatch};
 }
 function flowState(s,b){return b.over>0||b.invoiceMismatch||b.qtyMismatch?'review':!s?'missing':b.surplus>0?'surplus':b.toLock>0?'lock':b.toReceive>0?'receive':b.toPay>0?'pay':'done';}
@@ -612,7 +613,7 @@ document.querySelector('[data-view="report"]').addEventListener('click',()=>sele
 $('statementView').insertAdjacentHTML('afterend',`<section id="reportView" hidden><h2>รายงานยอดขาย · ตัดซื้อ · กำไร</h2><div class="report-toolbar"><div><label for="reportMonth">เดือนที่ขายลูกค้า</label><input id="reportMonth" type="month"></div><button id="reportAllMonths" type="button">ทุกเดือน</button><button id="exportProfit" type="button"><i data-lucide="download"></i>ดาวน์โหลด CSV</button><button id="printProfit" type="button"><i data-lucide="printer"></i>พิมพ์รายงาน</button></div><p id="reportPeriod" class="report-note"></p>${profitCards('report')}<p class="report-note">กำไรขั้นต้น = ยอดขาย − ต้นทุนทองรวมค่าใช้จ่ายในใบล็อกหรือใบรับจริง · ไม่หักค่าใช้จ่ายร้านและภาษี · งานที่ต้นทุนยังไม่ครบจะแสดง “รอต้นทุนครบ” และไม่นำมารวมกำไร</p><div class="tablewrap"><table class="report-table"><thead><tr><th>งาน / วันที่ขาย</th><th>ลูกค้า / ร้านส่ง</th><th class="num">ยอดขาย</th><th class="num">ยอดตัดซื้อ</th><th class="num">ต้นทุนรับจริง</th><th class="num">กำไรตามใบล็อก</th><th class="num">กำไรตามใบรับ</th><th>รับทอง</th><th>ชำระเงิน</th></tr></thead><tbody id="profitRows"></tbody></table></div></section>`);
 $('reportMonth').value=today().slice(0,7);
 function profitForSale(s){
- const b=saleBalance(s),active=activeSale(s),returned=returnedIndexes(s).size>0,complete=active.qty>0&&b.locks.length>0&&b.locked>=active.g&&b.qtyKnown&&(returned?b.lockedQty>=active.qty:b.locked===s.g&&b.lockedQty===s.qty);
+ const b=saleBalance(s),active=activeSale(s),returned=returnedIndexes(s).size>0,complete=active.qty>0&&b.locks.length>0&&b.locked>=active.g&&b.qtyKnown&&(returned||b.locked===s.g);
  const laborKnown=active.lines.every(l=>Number.isSafeInteger(l.laborCost)&&l.laborCost>=0),laborCost=laborKnown?active.lines.reduce((n,l)=>n+l.laborCost,0):null;
  const received=complete&&b.received===b.locked&&!b.over&&!b.qtyMismatch,actualReady=received&&b.locks.every(r=>sums(r).invoiceKnown&&sums(r).g===0);
  // Returned stock keeps its supplier liability; only the active weight bears sales cost.
