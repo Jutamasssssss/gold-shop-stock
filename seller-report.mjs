@@ -3,8 +3,9 @@ const integer = value => Number.isSafeInteger(value) && value >= 0;
 
 // Allocate integer satang once per job so seller totals reconcile exactly.
 export function allocateCost(total, weights) {
-  if (!integer(total) || !weights.length || weights.some(n => !integer(n) || n === 0)) return weights.map(() => null);
+  if (!integer(total) || !weights.length || weights.some(n => !integer(n))) return weights.map(() => null);
   const denominator = weights.reduce((sum, n) => sum + BigInt(n), 0n);
+  if (denominator === 0n) return weights.map(() => total === 0 ? 0 : null);
   const parts = weights.map((n, index) => {
     const value = BigInt(total) * BigInt(n);
     return {index, amount: Number(value / denominator), remainder: value % denominator};
@@ -51,18 +52,19 @@ export function buildSellerReport(profitRows, {month='', seller='', basis='lock'
     const active = original.map((line, index) => ({line, index})).filter(({index}) => !returned.has(index));
     const lockReady = Number.isSafeInteger(row.expected) && integer(row.allocatedLockCost);
     const receiptReady = Number.isSafeInteger(row.actual) && integer(row.actualCost) && integer(row.laborCost);
-    const locked = allocateCost(lockReady ? row.allocatedLockCost : null, active.map(({line}) => line.g));
-    const received = allocateCost(receiptReady ? row.actualCost - row.laborCost : null, active.map(({line}) => line.g));
+    const locked = allocateCost(lockReady ? row.allocatedLockCost : null, active.map(({line,index}) => row.sourceLines?.[index]?.required ?? line.g));
+    const received = allocateCost(receiptReady ? row.actualCost - row.laborCost - (row.directCost ?? 0) : null, active.map(({line,index}) => row.sourceLines?.[index]?.required ?? line.g));
     const position = new Map(active.map(({index}, i) => [index, i]));
     original.forEach((line, index) => {
       const name = sellerName(line.seller), key = name ? 'seller:' + name.toLocaleLowerCase('th-TH') : 'unassigned';
       const i = position.get(index), labor = integer(line.laborCost) ? line.laborCost : null, isReturn = returned.has(index);
-      const lockCost = !isReturn && labor !== null && locked[i] !== null && locked[i] !== undefined ? locked[i] + labor : null;
-      const receiptCost = !isReturn && labor !== null && received[i] !== null && received[i] !== undefined ? received[i] + labor : null;
+      const funding=row.sourceLines?.[index],direct=funding?funding.cost:0,revenue=funding?funding.revenue:line.price;
+      const lockCost = !isReturn && direct !== null && labor !== null && locked[i] !== null && locked[i] !== undefined ? locked[i] + direct + labor : null;
+      const receiptCost = !isReturn && direct !== null && labor !== null && received[i] !== null && received[i] !== undefined ? received[i] + direct + labor : null;
       lines.push({key, seller:name || 'ไม่ระบุผู้ขาย', saleId:sale.id, ref:sale.ref, date:sale.date, time:sale.time || '', index,
         customer:line.customer || sale.customer || '', channel:line.channel || '', orderNumber:line.orderNumber || '', item:sale.item || '',
-        qty:line.qty ?? 1, weight:line.g, sales:line.price, laborCost:labor, lockCost, receiptCost,
-        lockProfit:lockCost === null ? null : line.price - lockCost, actualProfit:receiptCost === null ? null : line.price - receiptCost, returned:isReturn});
+        qty:line.qty ?? 1, weight:line.g, sales:revenue, laborCost:labor, lockCost, receiptCost,
+        lockProfit:lockCost === null ? null : revenue - lockCost, actualProfit:receiptCost === null ? null : revenue - receiptCost, returned:isReturn});
     });
   }
   const choices = new Map();

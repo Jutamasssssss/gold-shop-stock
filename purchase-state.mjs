@@ -35,6 +35,10 @@ export function validateState(state) {
         if (row.legacyLaborCost != null && (!Number.isSafeInteger(row.legacyLaborCost) || row.legacyLaborCost < 0)) fail('ต้นทุนค่ากำเหน็จรวมไม่ถูกต้อง: ' + row.ref);
         for (const line of row.lines || []) {
           if (line.laborCost != null && (!Number.isSafeInteger(line.laborCost) || line.laborCost < 0)) fail('ต้นทุนค่ากำเหน็จไม่ถูกต้อง: ' + row.ref);
+          if (line.goldSource !== undefined) {
+            const source=line.goldSource;
+            if (!source || !['tradein','stock'].includes(source.kind) || !['jewelry','bar'].includes(source.type) || !Number.isSafeInteger(source.grams) || source.grams<=0 || source.grams>line.g || (source.cost===null ? source.kind!=='stock' : !Number.isSafeInteger(source.cost)||source.cost<0) || typeof source.note!=='string' || source.note.length>200) fail('ต้นทุนทองเทิร์น / ทองในร้านไม่ถูกต้อง: '+row.ref);
+          }
         }
         const returned = new Set(), eventIds = new Set(), count = row.lines?.length || 1;
         if (row.returnHistory !== undefined && !Array.isArray(row.returnHistory)) fail('ประวัติคืนสินค้าไม่ถูกต้อง');

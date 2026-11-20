@@ -1,4 +1,4 @@
-import {COLLECTION, HISTORY, OWNER_UID, validateState, mergeLegacy, commitState} from './purchase-state.mjs?v=profit-safety-20261118';
+import {COLLECTION, HISTORY, OWNER_UID, validateState, mergeLegacy, commitState} from './purchase-state.mjs?v=gold-sources-20261120';
 
 const ui = id => document.getElementById(id);
 const empty = () => ({sales: [], records: [], revision: 0});
